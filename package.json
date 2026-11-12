@@ -34,5 +34,8 @@
   "workspaces": [
     "client",
     "server"
-  ]
+  ],
+  "dependencies": {
+    "zod": "^4.6.7"
+  }
 }

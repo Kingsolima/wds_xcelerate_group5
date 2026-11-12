@@ -1,1 +1,5 @@
 @import 'tailwindcss';
+
+@theme {
+  --color-western-primary-purple: oklch(37.8% 0.148 299.4);
+}
