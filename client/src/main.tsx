@@ -5,12 +5,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { routeTree } from './routeTree.gen';
 import '../styles.css';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: 60_000, retry: false } },
+});
 
 const router = createRouter({
   routeTree,
   context: { queryClient },
   defaultPreload: 'intent',
+  // Loaders read through React Query, which has its own cache.
+  defaultPreloadStaleTime: 0,
+  scrollRestoration: true,
 });
 
 // Gives type-safe <Link to="..."> and useParams() across the app.

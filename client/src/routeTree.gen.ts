@@ -10,33 +10,128 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LandlordsLandlordIdRouteImport } from './routes/landlords/$landlordId'
+import { Route as ListingsIndexRouteImport } from './routes/listings/index'
+import { Route as ListingsListingIdRouteImport } from './routes/listings/$listingId'
+import { Route as PostIndexRouteImport } from './routes/post/index'
+import { Route as ReviewsIndexRouteImport } from './routes/reviews/index'
+import { Route as RoommatesIndexRouteImport } from './routes/roommates/index'
+import { Route as SavedIndexRouteImport } from './routes/saved/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LandlordsLandlordIdRoute = LandlordsLandlordIdRouteImport.update({
+  id: '/landlords/$landlordId',
+  path: '/landlords/$landlordId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ListingsIndexRoute = ListingsIndexRouteImport.update({
+  id: '/listings/',
+  path: '/listings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ListingsListingIdRoute = ListingsListingIdRouteImport.update({
+  id: '/listings/$listingId',
+  path: '/listings/$listingId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostIndexRoute = PostIndexRouteImport.update({
+  id: '/post/',
+  path: '/post/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewsIndexRoute = ReviewsIndexRouteImport.update({
+  id: '/reviews/',
+  path: '/reviews/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoommatesIndexRoute = RoommatesIndexRouteImport.update({
+  id: '/roommates/',
+  path: '/roommates/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SavedIndexRoute = SavedIndexRouteImport.update({
+  id: '/saved/',
+  path: '/saved/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/landlords/$landlordId': typeof LandlordsLandlordIdRoute
+  '/listings/$listingId': typeof ListingsListingIdRoute
+  '/listings/': typeof ListingsIndexRoute
+  '/post/': typeof PostIndexRoute
+  '/reviews/': typeof ReviewsIndexRoute
+  '/roommates/': typeof RoommatesIndexRoute
+  '/saved/': typeof SavedIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/landlords/$landlordId': typeof LandlordsLandlordIdRoute
+  '/listings/$listingId': typeof ListingsListingIdRoute
+  '/listings': typeof ListingsIndexRoute
+  '/post': typeof PostIndexRoute
+  '/reviews': typeof ReviewsIndexRoute
+  '/roommates': typeof RoommatesIndexRoute
+  '/saved': typeof SavedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/landlords/$landlordId': typeof LandlordsLandlordIdRoute
+  '/listings/$listingId': typeof ListingsListingIdRoute
+  '/listings/': typeof ListingsIndexRoute
+  '/post/': typeof PostIndexRoute
+  '/reviews/': typeof ReviewsIndexRoute
+  '/roommates/': typeof RoommatesIndexRoute
+  '/saved/': typeof SavedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/landlords/$landlordId'
+    | '/listings/$listingId'
+    | '/listings/'
+    | '/post/'
+    | '/reviews/'
+    | '/roommates/'
+    | '/saved/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/landlords/$landlordId'
+    | '/listings/$listingId'
+    | '/listings'
+    | '/post'
+    | '/reviews'
+    | '/roommates'
+    | '/saved'
+  id:
+    | '__root__'
+    | '/'
+    | '/landlords/$landlordId'
+    | '/listings/$listingId'
+    | '/listings/'
+    | '/post/'
+    | '/reviews/'
+    | '/roommates/'
+    | '/saved/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LandlordsLandlordIdRoute: typeof LandlordsLandlordIdRoute
+  ListingsListingIdRoute: typeof ListingsListingIdRoute
+  ListingsIndexRoute: typeof ListingsIndexRoute
+  PostIndexRoute: typeof PostIndexRoute
+  ReviewsIndexRoute: typeof ReviewsIndexRoute
+  RoommatesIndexRoute: typeof RoommatesIndexRoute
+  SavedIndexRoute: typeof SavedIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +143,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/landlords/$landlordId': {
+      id: '/landlords/$landlordId'
+      path: '/landlords/$landlordId'
+      fullPath: '/landlords/$landlordId'
+      preLoaderRoute: typeof LandlordsLandlordIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/listings/': {
+      id: '/listings/'
+      path: '/listings'
+      fullPath: '/listings/'
+      preLoaderRoute: typeof ListingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/listings/$listingId': {
+      id: '/listings/$listingId'
+      path: '/listings/$listingId'
+      fullPath: '/listings/$listingId'
+      preLoaderRoute: typeof ListingsListingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/post/': {
+      id: '/post/'
+      path: '/post'
+      fullPath: '/post/'
+      preLoaderRoute: typeof PostIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reviews/': {
+      id: '/reviews/'
+      path: '/reviews'
+      fullPath: '/reviews/'
+      preLoaderRoute: typeof ReviewsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/roommates/': {
+      id: '/roommates/'
+      path: '/roommates'
+      fullPath: '/roommates/'
+      preLoaderRoute: typeof RoommatesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/saved/': {
+      id: '/saved/'
+      path: '/saved'
+      fullPath: '/saved/'
+      preLoaderRoute: typeof SavedIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LandlordsLandlordIdRoute: LandlordsLandlordIdRoute,
+  ListingsListingIdRoute: ListingsListingIdRoute,
+  ListingsIndexRoute: ListingsIndexRoute,
+  PostIndexRoute: PostIndexRoute,
+  ReviewsIndexRoute: ReviewsIndexRoute,
+  RoommatesIndexRoute: RoommatesIndexRoute,
+  SavedIndexRoute: SavedIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

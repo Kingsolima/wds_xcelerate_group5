@@ -1,5 +1,516 @@
 @import 'tailwindcss';
 
+/* PP Frama: Black for display, Extralight for the quiet half of a heading, Regular for UI. */
+@font-face {
+  font-family: 'PP Frama';
+  src: url('./src/assets/fonts/pp-frama/PPFrama-Extralight.otf') format('opentype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'PP Frama';
+  src: url('./src/assets/fonts/pp-frama/PPFrama-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'PP Frama';
+  src: url('./src/assets/fonts/pp-frama/PPFrama-Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* PP Frama Text: looser spacing, used for running text and anything under 15px. */
+@font-face {
+  font-family: 'PP Frama Text';
+  src: url('./src/assets/fonts/pp-frama/PPFramaText-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
+  --font-sans: 'PP Frama', ui-sans-serif, system-ui, sans-serif;
+  --font-text: 'PP Frama Text', 'PP Frama', ui-sans-serif, system-ui, sans-serif;
+
+  /* Western purple: primary actions, Western Verified, the hero wall, the footer. */
   --color-western-primary-purple: oklch(37.8% 0.148 299.4);
+  --color-purple: oklch(37.8% 0.148 299.4);
+  --color-purple-deep: oklch(30% 0.125 299.4);
+  --color-purple-bright: oklch(46% 0.16 299.4);
+
+  /* Neutrals, tinted a little toward the purple. */
+  --color-ink: oklch(22% 0.035 300);
+  --color-ink-soft: oklch(43% 0.03 300);
+  --color-ink-faint: oklch(53% 0.025 300);
+  --color-paper: oklch(97.2% 0.005 300);
+  --color-wash: oklch(94.2% 0.008 300);
+  --color-line: oklch(89% 0.01 300);
+
+  /* Pastel palette: each colour has a fill, a hover fill, and an "ink" for text on top.
+     Each one also owns a product area: lavender = leases, mint = sublets, peach = housemates,
+     butter = reviews, sky = posting and landlords. */
+  --color-lavender: oklch(84% 0.075 302);
+  --color-lavender-hover: oklch(80% 0.09 302);
+  --color-lavender-ink: oklch(36% 0.11 302);
+
+  --color-mint: oklch(91% 0.075 155);
+  --color-mint-hover: oklch(87% 0.09 155);
+  --color-mint-ink: oklch(38% 0.08 155);
+
+  --color-peach: oklch(89% 0.065 50);
+  --color-peach-hover: oklch(85% 0.08 50);
+  --color-peach-ink: oklch(42% 0.1 40);
+
+  --color-butter: oklch(94% 0.08 95);
+  --color-butter-hover: oklch(90% 0.095 95);
+  --color-butter-ink: oklch(42% 0.08 80);
+
+  --color-sky: oklch(89% 0.055 235);
+  --color-sky-hover: oklch(85% 0.07 235);
+  --color-sky-ink: oklch(38% 0.09 245);
+
+  --color-danger: oklch(52% 0.19 27);
+  --color-danger-wash: oklch(95% 0.03 27);
+
+  /* Strong ease-out for anything entering or answering a press; in-out for things that travel. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --shadow-card: 0 1px 2px oklch(22% 0.035 300 / 0.05), 0 10px 24px -14px oklch(22% 0.035 300 / 0.22);
+  --shadow-lift: 0 2px 4px oklch(22% 0.035 300 / 0.06), 0 18px 36px -16px oklch(22% 0.035 300 / 0.3);
+  --shadow-pop: 0 4px 10px oklch(22% 0.035 300 / 0.08), 0 28px 60px -20px oklch(22% 0.035 300 / 0.4);
+
+  --animate-rise: rise 700ms var(--ease-out) both;
+  --animate-fade: fade 400ms ease both;
+  --animate-pop: pop 320ms var(--ease-out);
+  --animate-shimmer: shimmer 1.4s linear infinite;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(0.6em);
+    }
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes pop {
+    40% {
+      transform: scale(1.22);
+    }
+  }
+  @keyframes shimmer {
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+    accent-color: var(--color-purple);
+    scrollbar-color: var(--color-line) transparent;
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    min-height: 100dvh;
+    overflow-x: clip;
+  }
+
+  ::selection {
+    background: var(--color-lavender);
+    color: var(--color-ink);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button,
+  [role='button'],
+  summary,
+  label[for],
+  select {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  /* One focus ring everywhere; white on the purple grounds. */
+  :focus-visible {
+    outline: 2px solid var(--color-purple);
+    outline-offset: 2px;
+  }
+
+  .on-dark :focus-visible {
+    outline-color: white;
+  }
+
+  input,
+  textarea,
+  select {
+    caret-color: var(--color-purple);
+  }
+
+  /* The browser's own search clear button doubles up with ours. */
+  input[type='search']::-webkit-search-cancel-button {
+    display: none;
+  }
+
+  dialog {
+    color: inherit;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+/* Black is very heavy: keep it tight and never let it track wider than this. */
+@utility font-display {
+  font-family: var(--font-sans);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+
+/* The quiet half of a heading. */
+@utility font-quiet {
+  font-family: var(--font-sans);
+  font-weight: 200;
+  letter-spacing: -0.02em;
+}
+
+/* Page gutters shared by every section, so left and right edges always line up. */
+@utility wrap {
+  width: 100%;
+  max-width: 82rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+
+  @media (width >= 48rem) {
+    padding-inline: 2.5rem;
+  }
+}
+
+@utility skeleton {
+  border-radius: 0.5rem;
+  background: linear-gradient(
+      100deg,
+      transparent 30%,
+      oklch(100% 0 0 / 0.6) 50%,
+      transparent 70%
+    )
+    var(--color-wash);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/* Native range input, themed. */
+@utility range {
+  appearance: none;
+  width: 100%;
+  height: 1.75rem;
+  background: transparent;
+
+  &::-webkit-slider-runnable-track {
+    height: 0.375rem;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      var(--color-purple) var(--fill, 50%),
+      var(--color-line) var(--fill, 50%)
+    );
+  }
+  &::-moz-range-track {
+    height: 0.375rem;
+    border-radius: 999px;
+    background: var(--color-line);
+  }
+  &::-moz-range-progress {
+    height: 0.375rem;
+    border-radius: 999px;
+    background: var(--color-purple);
+  }
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 1.375rem;
+    height: 1.375rem;
+    margin-top: -0.5rem;
+    border-radius: 999px;
+    border: 2px solid var(--color-purple);
+    background: white;
+    box-shadow: var(--shadow-card);
+    transition: transform 160ms var(--ease-out);
+  }
+  &::-moz-range-thumb {
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: 999px;
+    border: 2px solid var(--color-purple);
+    background: white;
+    box-shadow: var(--shadow-card);
+  }
+  &:active::-webkit-slider-thumb {
+    transform: scale(1.12);
+  }
+}
+
+/* Dialogs: a centred modal (photo lightbox) and a sheet that rises from the bottom (filters, menu).
+   Entering uses the drawer curve; leaving is quicker than arriving. */
+dialog.sheet,
+dialog.modal {
+  transition:
+    opacity 180ms ease,
+    transform 220ms var(--ease-drawer),
+    overlay 220ms allow-discrete,
+    display 220ms allow-discrete;
+}
+
+dialog.sheet {
+  transform: translateY(100%);
+}
+
+dialog.modal {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+dialog.sheet[open] {
+  transform: translateY(0);
+  transition-duration: 180ms, 420ms, 420ms, 420ms;
+
+  @starting-style {
+    transform: translateY(100%);
+  }
+}
+
+dialog.modal[open] {
+  opacity: 1;
+  transform: scale(1);
+  transition-duration: 220ms, 260ms, 260ms, 260ms;
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+dialog.sheet::backdrop,
+dialog.modal::backdrop {
+  background: oklch(22% 0.035 300 / 0);
+  transition:
+    background-color 220ms ease,
+    overlay 220ms allow-discrete,
+    display 220ms allow-discrete;
+}
+
+dialog.sheet[open]::backdrop,
+dialog.modal[open]::backdrop {
+  background: oklch(22% 0.035 300 / 0.55);
+
+  @starting-style {
+    background: oklch(22% 0.035 300 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.sheet,
+  dialog.modal,
+  dialog.sheet[open],
+  dialog.modal[open] {
+    transform: none;
+    transition-duration: 150ms;
+  }
+
+  dialog.sheet {
+    opacity: 0;
+  }
+
+  dialog.sheet[open] {
+    opacity: 1;
+
+    @starting-style {
+      opacity: 0;
+    }
+  }
+}
+
+/* A quick double-tap of the door icon when you hover Knock. */
+@keyframes knock {
+  25% {
+    transform: translateX(-2px) rotate(-6deg);
+  }
+  50% {
+    transform: translateX(1px);
+  }
+  75% {
+    transform: translateX(-1px) rotate(-3deg);
+  }
+}
+
+/* ---------- Home: the street of doors ---------- */
+
+/* Each door stands in a white frame. The pastel door is hinged on its left edge and opens inward,
+   away from you, uncovering a photograph of what is behind it. It rests a little ajar. */
+.door {
+  --swing: 13deg;
+  perspective: 1400px;
+}
+
+.door__panel {
+  transform-origin: left center;
+  transform: rotateY(var(--swing));
+  transition: transform 260ms var(--ease-out);
+  backface-visibility: hidden;
+}
+
+/* The door gets darker as it turns away from the light. */
+.door__shade {
+  opacity: 0.06;
+  transition: opacity 260ms var(--ease-out);
+}
+
+.door__photo {
+  transform: scale(1.06);
+  transition: transform 260ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .door:hover {
+    --swing: 68deg;
+  }
+  /* Opening is slower than closing: the visitor is deciding; closing is the system answering. */
+  .door:hover .door__panel {
+    transition-duration: 620ms;
+  }
+  .door:hover .door__shade {
+    opacity: 0.32;
+    transition-duration: 620ms;
+  }
+  .door:hover .door__photo {
+    transform: scale(1);
+    transition-duration: 900ms;
+  }
+}
+
+.door:focus-visible {
+  --swing: 68deg;
+}
+
+.door:active .door__panel {
+  transform: rotateY(calc(var(--swing) + 4deg));
+}
+
+/* Entrance, once: the doors rise from the ground line one after another, then fall ajar. */
+.door__rise {
+  animation: door-rise 900ms var(--ease-out) backwards;
+  animation-delay: calc(380ms + var(--i) * 70ms);
+}
+
+.door__panel {
+  animation: door-settle 900ms var(--ease-out) backwards;
+  animation-delay: calc(900ms + var(--i) * 70ms);
+}
+
+@keyframes door-rise {
+  from {
+    transform: translateY(105%);
+  }
+}
+
+@keyframes door-settle {
+  from {
+    transform: rotateY(0deg);
+  }
+}
+
+/* Hero copy: each line slides up out of its own mask. */
+.line-rise {
+  display: block;
+  overflow: clip;
+  padding-bottom: 0.06em;
+  margin-bottom: -0.06em;
+}
+
+.line-rise > span {
+  display: block;
+  animation: line-rise 800ms var(--ease-out) backwards;
+  animation-delay: var(--d, 0ms);
+}
+
+@keyframes line-rise {
+  from {
+    transform: translateY(105%);
+  }
+}
+
+.fade-up {
+  animation: fade-up 700ms var(--ease-out) backwards;
+  animation-delay: var(--d, 0ms);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .door,
+  .door:hover,
+  .door:focus-visible {
+    --swing: 13deg;
+  }
+  .door__panel,
+  .door__rise,
+  .line-rise > span {
+    animation: none;
+  }
+  .door__photo {
+    transform: none;
+  }
+  .door:hover .door__shade,
+  .door:focus-visible .door__shade {
+    opacity: 0.06;
+  }
+  .door:hover .door__photo,
+  .door:focus-visible .door__photo {
+    opacity: 1;
+  }
+  .fade-up {
+    animation-name: fade;
+  }
 }

@@ -14,3 +14,10 @@ Thumbs.db
 Info.md
 
 .tanstack/
+.agents/
+.claude
+skills-lock.json
+docs/
+project.txt
+shots/
+.taste-skill
