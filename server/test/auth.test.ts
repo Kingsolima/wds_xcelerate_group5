@@ -138,9 +138,16 @@ describe('roleForEmail', () => {
     assert.equal(roleForEmail('A@UWO.CA'), 'student');
   });
 
+  test('ivey.ca emails are students, case-insensitive', () => {
+    assert.equal(roleForEmail('a@ivey.ca'), 'student');
+    assert.equal(roleForEmail('A@IVEY.CA'), 'student');
+  });
+
   test('look-alike domains are not students', () => {
     assert.equal(roleForEmail('a@uwo.ca.evil.com'), 'landlord');
     assert.equal(roleForEmail('a@notuwo.ca'), 'landlord');
+    assert.equal(roleForEmail('a@ivey.ca.evil.com'), 'landlord');
+    assert.equal(roleForEmail('a@notivey.ca'), 'landlord');
     assert.equal(roleForEmail('a@gmail.com'), 'landlord');
   });
 });

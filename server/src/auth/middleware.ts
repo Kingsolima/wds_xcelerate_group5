@@ -3,9 +3,13 @@ import type { Pool } from 'pg';
 import type { Role } from './types.ts';
 import type { VerifyToken } from './verify.ts';
 
-/** Verified @uwo.ca emails are students; everyone else is a landlord. Admins are set by hand in the DB. */
+/** Email domains that count as Western students (Ivey is Western's business school). */
+const STUDENT_DOMAINS = ['uwo.ca', 'ivey.ca'];
+
+/** Verified student-domain emails are students; everyone else is a landlord. Admins are set by hand in the DB. */
 export function roleForEmail(email: string): Role {
-  return email.toLowerCase().endsWith('@uwo.ca') ? 'student' : 'landlord';
+  const lower = email.toLowerCase();
+  return STUDENT_DOMAINS.some((d) => lower.endsWith(`@${d}`)) ? 'student' : 'landlord';
 }
 
 /** Returns the user's role, creating their profile row the first time we see them. */
