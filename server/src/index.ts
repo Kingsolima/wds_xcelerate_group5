@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import { pool } from './db.ts';
+import { auth } from './auth/index.ts';
+import { authRouter } from './routes/auth.ts';
 
 const app = express();
 
@@ -16,6 +18,8 @@ app.get('/api/health', async (_req, res) => {
     res.status(503).json({ ok: false, db: 'down' });
   }
 });
+
+app.use('/api/auth', authRouter(auth));
 
 const port = Number(process.env.PORT ?? 3001);
 app.listen(port, () => {

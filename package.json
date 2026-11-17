@@ -33,5 +33,9 @@
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^15.14.0",
     "prettier": "^3.4.0"
+  },
+  "dependencies": {
+    "@neon/config": "^1.14.1",
+    "@neon/env": "^2.1.4"
   }
 }
