@@ -75,6 +75,12 @@
   --color-sky-hover: oklch(85% 0.07 235);
   --color-sky-ink: oklch(38% 0.09 245);
 
+  /* The landing page: a pale, warm card (bone) held in a near-black purple frame (night).
+     bone-deep is the colour of the giant words printed on the card. */
+  --color-bone: oklch(94.6% 0.017 86);
+  --color-bone-deep: oklch(90.8% 0.023 84);
+  --color-night: oklch(18.5% 0.04 300);
+
   --color-danger: oklch(52% 0.19 27);
   --color-danger-wash: oklch(95% 0.03 27);
 
@@ -83,9 +89,12 @@
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
-  --shadow-card: 0 1px 2px oklch(22% 0.035 300 / 0.05), 0 10px 24px -14px oklch(22% 0.035 300 / 0.22);
-  --shadow-lift: 0 2px 4px oklch(22% 0.035 300 / 0.06), 0 18px 36px -16px oklch(22% 0.035 300 / 0.3);
-  --shadow-pop: 0 4px 10px oklch(22% 0.035 300 / 0.08), 0 28px 60px -20px oklch(22% 0.035 300 / 0.4);
+  --shadow-card:
+    0 1px 2px oklch(22% 0.035 300 / 0.05), 0 10px 24px -14px oklch(22% 0.035 300 / 0.22);
+  --shadow-lift:
+    0 2px 4px oklch(22% 0.035 300 / 0.06), 0 18px 36px -16px oklch(22% 0.035 300 / 0.3);
+  --shadow-pop:
+    0 4px 10px oklch(22% 0.035 300 / 0.08), 0 28px 60px -20px oklch(22% 0.035 300 / 0.4);
 
   --animate-rise: rise 700ms var(--ease-out) both;
   --animate-fade: fade 400ms ease both;
@@ -222,12 +231,7 @@
 
 @utility skeleton {
   border-radius: 0.5rem;
-  background: linear-gradient(
-      100deg,
-      transparent 30%,
-      oklch(100% 0 0 / 0.6) 50%,
-      transparent 70%
-    )
+  background: linear-gradient(100deg, transparent 30%, oklch(100% 0 0 / 0.6) 50%, transparent 70%)
     var(--color-wash);
   background-size: 200% 100%;
   animation: var(--animate-shimmer);
@@ -380,137 +384,10 @@ dialog.modal[open]::backdrop {
   }
 }
 
-/* ---------- Home: the street of doors ---------- */
-
-/* Each door stands in a white frame. The pastel door is hinged on its left edge and opens inward,
-   away from you, uncovering a photograph of what is behind it. It rests a little ajar. */
-.door {
-  --swing: 13deg;
-  perspective: 1400px;
-}
-
-.door__panel {
-  transform-origin: left center;
-  transform: rotateY(var(--swing));
-  transition: transform 260ms var(--ease-out);
-  backface-visibility: hidden;
-}
-
-/* The door gets darker as it turns away from the light. */
-.door__shade {
-  opacity: 0.06;
-  transition: opacity 260ms var(--ease-out);
-}
-
-.door__photo {
-  transform: scale(1.06);
-  transition: transform 260ms var(--ease-out);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .door:hover {
-    --swing: 68deg;
-  }
-  /* Opening is slower than closing: the visitor is deciding; closing is the system answering. */
-  .door:hover .door__panel {
-    transition-duration: 620ms;
-  }
-  .door:hover .door__shade {
-    opacity: 0.32;
-    transition-duration: 620ms;
-  }
-  .door:hover .door__photo {
-    transform: scale(1);
-    transition-duration: 900ms;
-  }
-}
-
-.door:focus-visible {
-  --swing: 68deg;
-}
-
-.door:active .door__panel {
-  transform: rotateY(calc(var(--swing) + 4deg));
-}
-
-/* Entrance, once: the doors rise from the ground line one after another, then fall ajar. */
-.door__rise {
-  animation: door-rise 900ms var(--ease-out) backwards;
-  animation-delay: calc(380ms + var(--i) * 70ms);
-}
-
-.door__panel {
-  animation: door-settle 900ms var(--ease-out) backwards;
-  animation-delay: calc(900ms + var(--i) * 70ms);
-}
-
-@keyframes door-rise {
-  from {
-    transform: translateY(105%);
-  }
-}
-
-@keyframes door-settle {
-  from {
-    transform: rotateY(0deg);
-  }
-}
-
-/* Hero copy: each line slides up out of its own mask. */
-.line-rise {
-  display: block;
-  overflow: clip;
-  padding-bottom: 0.06em;
-  margin-bottom: -0.06em;
-}
-
-.line-rise > span {
-  display: block;
-  animation: line-rise 800ms var(--ease-out) backwards;
-  animation-delay: var(--d, 0ms);
-}
-
-@keyframes line-rise {
-  from {
-    transform: translateY(105%);
-  }
-}
-
-.fade-up {
-  animation: fade-up 700ms var(--ease-out) backwards;
-  animation-delay: var(--d, 0ms);
-}
-
+/* Rise and fade in. Used by the landing page's "Show the whole suite" button. */
 @keyframes fade-up {
   from {
     opacity: 0;
     transform: translateY(12px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .door,
-  .door:hover,
-  .door:focus-visible {
-    --swing: 13deg;
-  }
-  .door__panel,
-  .door__rise,
-  .line-rise > span {
-    animation: none;
-  }
-  .door__photo {
-    transform: none;
-  }
-  .door:hover .door__shade,
-  .door:focus-visible .door__shade {
-    opacity: 0.06;
-  }
-  .door:hover .door__photo,
-  .door:focus-visible .door__photo {
-    opacity: 1;
-  }
-  .fade-up {
-    animation-name: fade;
   }
 }

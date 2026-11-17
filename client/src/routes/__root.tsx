@@ -1,4 +1,4 @@
-import { createRootRouteWithContext, Outlet } from '@tanstack/react-router';
+import { createRootRouteWithContext, Outlet, useRouterState } from '@tanstack/react-router';
 import type { QueryClient } from '@tanstack/react-query';
 import { TanStackDevtools } from '@tanstack/react-devtools';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
@@ -17,6 +17,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 });
 
 function RootLayout() {
+  // The landing page carries its own header inside its card, so the site nav stays off it.
+  const onLanding = useRouterState({ select: (state) => state.location.pathname === '/' });
   return (
     <>
       <a
@@ -25,7 +27,7 @@ function RootLayout() {
       >
         Skip to content
       </a>
-      <SiteNav />
+      {!onLanding && <SiteNav />}
       <main id="main" tabIndex={-1} className="outline-none">
         <Outlet />
       </main>

@@ -1,0 +1,1059 @@
+/*
+  The landing page: a pale card held in a dark frame, with the Oxford suite standing on it.
+  Colours and easings come from the tokens in styles.css.
+
+  Layers inside the card, back to front:
+    0  paper grain and the two giant words
+    1  the model (a transparent canvas, so the words show round it)
+    2  the room labels
+    3  the copy, rail and buttons
+    4  the header
+*/
+
+html.lp-root {
+  background: var(--color-night);
+  scroll-padding-top: 0;
+}
+
+.lp {
+  --frame: 0.875rem;
+  --pad: clamp(1.25rem, 2.2vw, 2rem);
+  --radius: clamp(1.25rem, 2vw, 1.875rem);
+  background: var(--color-night);
+}
+
+.lp-stage {
+  position: relative;
+  /* One screen for the opening view, then a screen of scrolling for each chapter. */
+  height: calc(var(--chapters) * 100svh);
+}
+
+.lp-sticky {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  padding: var(--frame);
+}
+
+.lp-card {
+  position: relative;
+  height: 100%;
+  overflow: clip;
+  border-radius: var(--radius);
+  background: var(--color-bone);
+  color: var(--color-ink);
+  isolation: isolate;
+}
+
+/* Paper grain, so the card is not a flat fill. */
+.lp-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .37 0 0 0 0 .3 0 0 0 .2 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Until the opening sequence starts, hold everything it is about to bring in. */
+.lp-card[data-state='loading'] :is(.lp-ghost, .lp-header, .lp-rail, .lp-cue) {
+  visibility: hidden;
+}
+
+/* ---------- The giant words ---------- */
+
+.lp-ghost {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+  color: var(--color-bone-deep);
+  font-family: var(--font-sans);
+  font-weight: 900;
+  letter-spacing: -0.045em;
+  line-height: 0.76;
+  text-transform: uppercase;
+}
+
+.lp-ghost-row {
+  position: absolute;
+  overflow: clip;
+  white-space: nowrap;
+  font-size: 30vw;
+}
+
+.lp-ghost-row--a {
+  top: calc(var(--pad) + 3.5rem);
+  left: calc(var(--pad) * 0.55);
+}
+
+.lp-ghost-row--b {
+  right: calc(var(--pad) * 0.55);
+  bottom: -0.04em;
+}
+
+.lp-ghost-row span {
+  display: block;
+  will-change: transform;
+}
+
+/* ---------- The model ---------- */
+
+.lp-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* A finger moving up or down scrolls the page; side to side turns the model. */
+  touch-action: pan-y;
+  opacity: 0;
+  transition: opacity 700ms ease;
+
+  /*
+    In a chapter the model fills the card, so it is faded out where the words go: down the left
+    for the copy, and along the top and bottom for the header and the rail. --fade (0 in the
+    opening view, 1 in a chapter) is set on the card. A mask, not a wash laid over the top, so
+    the paper and its giant words still show through.
+  */
+  --clear: rgb(0 0 0 / calc(1 - var(--fade, 0)));
+  --half: rgb(0 0 0 / calc(1 - var(--fade, 0) * 0.45));
+  mask-image:
+    linear-gradient(90deg, var(--clear) 0%, var(--clear) 17%, var(--half) 31%, #000 46%),
+    linear-gradient(
+      180deg,
+      var(--clear) 0,
+      var(--clear) 3.5rem,
+      #000 8.5rem,
+      #000 calc(100% - 8rem),
+      var(--clear) calc(100% - 3.25rem),
+      var(--clear) 100%
+    );
+  mask-composite: intersect;
+}
+
+.lp-canvas[data-ready='true'] {
+  opacity: 1;
+}
+
+.lp-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  padding: 6.5rem var(--pad) 46%;
+  color: var(--color-ink);
+}
+
+.lp-fallback svg {
+  max-width: min(100%, 26rem);
+  max-height: 100%;
+}
+
+/* ---------- Room labels ---------- */
+
+.lp-tags {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: clip;
+  pointer-events: none;
+}
+
+.lp-tag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+.lp-tag-body {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.8125rem 0.4375rem 0.625rem;
+  border-radius: 999px;
+  background: white;
+  box-shadow: var(--shadow-card);
+  font-family: var(--font-text);
+  font-size: 0.8125rem;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  translate: -50% 0.25rem;
+  scale: 0.94;
+  transform-origin: 50% 100%;
+  transition:
+    opacity 160ms ease,
+    translate 200ms var(--ease-out),
+    scale 200ms var(--ease-out);
+}
+
+.lp-tag[data-on='true'] .lp-tag-body {
+  opacity: 1;
+  translate: -50% 0;
+  scale: 1;
+  transition-duration: 220ms, 320ms, 320ms;
+}
+
+/* The pin that ties a label to its room. */
+.lp-tag-body::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 1px;
+  height: 0.75rem;
+  background: var(--color-ink);
+  opacity: 0.4;
+}
+
+.lp-tag-body i {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px oklch(22% 0.035 300 / 0.12);
+}
+
+.lp-tag-body b {
+  font-family: var(--font-sans);
+  font-weight: 400;
+}
+
+.lp-tag-body span {
+  color: var(--color-ink-soft);
+}
+
+/* ---------- Header ---------- */
+
+.lp-header {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  padding: var(--pad);
+  pointer-events: none;
+}
+
+.lp-header > * {
+  pointer-events: auto;
+}
+
+.lp-logo {
+  justify-self: start;
+  margin: -0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  color: var(--color-purple);
+  transition: color 150ms ease;
+}
+
+.lp-logo:hover {
+  color: var(--color-purple-deep);
+}
+
+.lp-title {
+  display: grid;
+  justify-items: center;
+  gap: 0.625rem;
+  padding-top: 0.125rem;
+}
+
+.lp-title p {
+  font-weight: 900;
+  font-size: 1.0625rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.lp-title p span {
+  margin-left: 0.5rem;
+  font-weight: 200;
+}
+
+.lp-view {
+  display: flex;
+  padding: 0.1875rem;
+  border-radius: 999px;
+  background: oklch(22% 0.035 300 / 0.07);
+}
+
+.lp-view button {
+  min-height: 2rem;
+  padding: 0 0.875rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  color: var(--color-ink-soft);
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    scale 150ms var(--ease-out);
+}
+
+.lp-view button:hover {
+  color: var(--color-ink);
+}
+
+.lp-view button:active {
+  scale: 0.96;
+}
+
+.lp-view button[aria-pressed='true'] {
+  background: white;
+  color: var(--color-ink);
+  box-shadow: var(--shadow-card);
+}
+
+/* Two slanted bars, the upper one longer. They square up when you point at them. */
+.lp-burger {
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -0.625rem -0.5rem;
+  border-radius: 50%;
+  color: var(--color-purple);
+  transition: background-color 150ms ease;
+}
+
+.lp-burger span {
+  display: grid;
+  justify-items: end;
+  gap: 0.3125rem;
+}
+
+.lp-burger i {
+  display: block;
+  width: 1.5rem;
+  height: 0.21875rem;
+  background: currentColor;
+  transform: skewX(-28deg);
+  transition:
+    transform 260ms var(--ease-out),
+    width 260ms var(--ease-out);
+}
+
+.lp-burger i:last-child {
+  width: 1.0625rem;
+}
+
+.lp-burger:active {
+  scale: 0.94;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp-burger:hover {
+    background: oklch(22% 0.035 300 / 0.06);
+  }
+  .lp-burger:hover i {
+    transform: skewX(0deg);
+  }
+  .lp-burger:hover i:last-child {
+    width: 1.5rem;
+  }
+}
+
+/* ---------- Copy ---------- */
+
+.lp-left,
+.lp-right {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  pointer-events: none;
+}
+
+.lp-left {
+  bottom: var(--pad);
+  left: var(--pad);
+  width: clamp(18rem, 27vw, 25rem);
+}
+
+.lp-right {
+  right: var(--pad);
+  bottom: calc(var(--pad) + 4rem);
+  width: clamp(14rem, 18vw, 16.5rem);
+}
+
+/* Slides share one grid cell and sit on its bottom edge; only the current one is visible. */
+.lp-slide {
+  grid-area: 1 / 1;
+  align-self: end;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.lp-slide > * {
+  pointer-events: auto;
+}
+
+.lp-plancard {
+  display: block;
+  width: 4.75rem;
+  margin-bottom: 1.25rem;
+  padding: 0.5rem 0.4375rem;
+  border-radius: 0.5rem;
+  background: white;
+  color: var(--color-purple);
+  box-shadow:
+    0 0 0 1px oklch(22% 0.035 300 / 0.08),
+    var(--shadow-card);
+  transition:
+    translate 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out),
+    scale 150ms var(--ease-out);
+}
+
+.lp-plancard svg {
+  display: block;
+  width: 100%;
+}
+
+.lp-plancard[aria-pressed='true'] {
+  box-shadow:
+    0 0 0 2px var(--color-purple),
+    var(--shadow-card);
+}
+
+.lp-plancard:active {
+  scale: 0.97;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp-plancard:hover {
+    translate: 0 -2px;
+    box-shadow:
+      0 0 0 1px oklch(22% 0.035 300 / 0.12),
+      var(--shadow-lift);
+  }
+  .lp-plancard[aria-pressed='true']:hover {
+    box-shadow:
+      0 0 0 2px var(--color-purple),
+      var(--shadow-lift);
+  }
+}
+
+.lp-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.875rem;
+  font-size: 0.8125rem;
+  line-height: 1;
+  color: var(--color-ink-soft);
+}
+
+.lp-kicker span {
+  display: grid;
+  place-items: center;
+  min-width: 1.875rem;
+  height: 1.375rem;
+  padding: 0 0.4375rem;
+  border-radius: 999px;
+  background: var(--color-purple);
+  color: white;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-h1 {
+  font-weight: 900;
+  font-size: clamp(2.125rem, 3.25vw, 3.25rem);
+  line-height: 0.93;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+}
+
+/* Each heading line rises out of its own mask. The padding keeps the mask off the letterforms. */
+.lp-line-mask {
+  margin-block: -0.06em;
+  padding-block: 0.06em;
+}
+
+.lp-lede {
+  max-width: 21rem;
+  margin-top: 1rem;
+  font-family: var(--font-text);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--color-ink-soft);
+}
+
+.lp-fact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.875rem;
+  font-size: 0.875rem;
+}
+
+.lp-fact i {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-mint-ink);
+}
+
+.lp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.375rem;
+}
+
+/* The autograph: drawn on, not faded in. */
+.lp-sign {
+  width: 9.5rem;
+  margin-bottom: 0.75rem;
+  margin-left: -0.5rem;
+  overflow: visible;
+  fill: none;
+  stroke: var(--color-purple);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.lp-sign path {
+  stroke-dasharray: 1;
+}
+
+.lp-note {
+  font-family: var(--font-text);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--color-ink-soft);
+}
+
+/* The numbers behind a chapter, on a small card of their own because they sit over the model. */
+.lp-frag {
+  padding: 1rem 1.125rem 1.125rem;
+  border-radius: 1rem;
+  background: oklch(100% 0 0 / 0.86);
+  box-shadow: var(--shadow-lift);
+  backdrop-filter: blur(10px);
+}
+
+.lp-frag-title {
+  font-family: var(--font-text);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-ink-soft);
+}
+
+.lp-big {
+  font-weight: 900;
+  font-size: 3.25rem;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-big + .lp-frag-title {
+  margin-top: 0.375rem;
+}
+
+.lp-scores {
+  display: grid;
+  gap: 0.625rem;
+  margin-top: 0.875rem;
+  font-size: 0.8125rem;
+}
+
+.lp-scores li {
+  display: grid;
+  grid-template-columns: 4.25rem 1fr 1.625rem;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.lp-scores b {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.lp-bar {
+  height: 0.3125rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: oklch(22% 0.035 300 / 0.1);
+}
+
+.lp-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-purple);
+  transform-origin: left center;
+}
+
+.lp-rows {
+  display: grid;
+  gap: 0.375rem;
+  margin-top: 0.875rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--color-line);
+  font-size: 0.8125rem;
+}
+
+.lp-rows div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.lp-rows dt {
+  font-family: var(--font-text);
+  color: var(--color-ink-soft);
+}
+
+.lp-seats {
+  display: flex;
+  gap: 0.375rem;
+  margin-top: 0.875rem;
+}
+
+.lp-seats li {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+}
+
+/* The one room still open: an empty ring. */
+.lp-seats li[data-open='true'] {
+  background: transparent !important;
+  box-shadow: inset 0 0 0 2px var(--color-purple);
+}
+
+.lp-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 1.0625rem;
+}
+
+.lp-badge svg {
+  color: var(--color-purple);
+}
+
+.lp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.875rem;
+  font-size: 0.8125rem;
+}
+
+.lp-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 999px;
+  background: var(--color-wash);
+}
+
+/* ---------- Rail, cue, reset ---------- */
+
+.lp-rail {
+  position: absolute;
+  bottom: var(--pad);
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  gap: 0.25rem;
+  translate: -50% 0;
+}
+
+.lp-rail button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-ink-faint);
+  transition: color 200ms ease;
+}
+
+.lp-rail button span {
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-rail button b {
+  font-weight: 400;
+}
+
+/* A short bar draws under the chapter you are in, and under the one you point at. */
+.lp-rail button::after {
+  content: '';
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.5625rem;
+  left: 0.75rem;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-purple);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 360ms var(--ease-out);
+}
+
+.lp-rail button[aria-current='step'] {
+  color: var(--color-ink);
+}
+
+.lp-rail button[aria-current='step']::after {
+  transform: scaleX(1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp-rail button:hover {
+    color: var(--color-ink);
+  }
+  .lp-rail button:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+.lp-round {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  transition:
+    background-color 150ms ease,
+    translate 180ms var(--ease-out),
+    scale 150ms var(--ease-out);
+}
+
+.lp-round:active {
+  scale: 0.94;
+}
+
+.lp-cue {
+  position: absolute;
+  right: var(--pad);
+  bottom: var(--pad);
+  z-index: 3;
+  background: oklch(22% 0.035 300 / 0.08);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp-cue:hover {
+    background: var(--color-purple);
+    color: white;
+    translate: 0 2px;
+  }
+}
+
+.lp-reset {
+  position: absolute;
+  bottom: calc(var(--pad) + 3.25rem);
+  left: 50%;
+  z-index: 3;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-size: 0.875rem;
+  translate: -50% 0;
+  animation: fade-up 400ms var(--ease-out) backwards;
+  transition:
+    background-color 150ms ease,
+    scale 150ms var(--ease-out);
+}
+
+.lp-reset:hover {
+  background: var(--color-purple-deep);
+}
+
+.lp-reset:active {
+  scale: 0.97;
+}
+
+/* ---------- Menu ---------- */
+
+.lp-menu {
+  --frame: 0.875rem;
+  --pad: clamp(1.25rem, 2.2vw, 2rem);
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: var(--frame);
+  border: 0;
+  background: transparent;
+  color: white;
+}
+
+.lp-menu::backdrop {
+  background: transparent;
+}
+
+.lp-menu-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--pad);
+  overflow: auto;
+  border-radius: clamp(1.25rem, 2vw, 1.875rem);
+  background: var(--color-purple);
+}
+
+.lp-menu-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lp-menu-bar .lp-round {
+  margin: -0.625rem -0.5rem;
+}
+
+.lp-menu-bar .lp-round:hover {
+  background: oklch(100% 0 0 / 0.12);
+}
+
+.lp-menu-links {
+  display: grid;
+  align-content: center;
+  flex: 1;
+  padding-block: 2rem;
+}
+
+.lp-menu-link {
+  display: flex;
+  align-items: baseline;
+  gap: clamp(0.75rem, 2vw, 1.75rem);
+  width: fit-content;
+  padding-block: 0.25rem;
+  color: oklch(100% 0 0 / 0.72);
+  transition: color 200ms ease;
+}
+
+.lp-mask {
+  display: block;
+  overflow: clip;
+  margin-block: -0.06em;
+  padding-block: 0.06em;
+}
+
+.lp-mask > span {
+  display: block;
+}
+
+.lp-menu-index {
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-menu-word {
+  font-weight: 900;
+  font-size: clamp(2.75rem, 8.5vh, 5.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  transition: translate 320ms var(--ease-out);
+}
+
+.lp-menu-link:focus-visible {
+  color: white;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp-menu-link:hover {
+    color: white;
+  }
+  .lp-menu-link:hover .lp-menu-word {
+    translate: 0.75rem 0;
+  }
+}
+
+.lp-menu-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+}
+
+.lp-menu-foot p {
+  max-width: 20rem;
+  font-family: var(--font-text);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: oklch(100% 0 0 / 0.75);
+}
+
+/* ---------- Smaller screens ---------- */
+
+/* Not wide enough for a column either side of the model: it moves up, and the copy runs under it. */
+@media (width < 66.25rem), (max-aspect-ratio: 6 / 5) {
+  .lp-right {
+    display: none;
+  }
+
+  .lp-left {
+    bottom: calc(var(--pad) + 3.25rem);
+    width: min(100% - var(--pad) * 2, 30rem);
+  }
+
+  .lp-plancard {
+    display: none;
+  }
+
+  .lp-rail {
+    left: var(--pad);
+    translate: none;
+    margin-left: -0.75rem;
+  }
+
+  /* Here the copy is under the model, so that is the side it fades on. */
+  .lp-canvas {
+    mask-image: linear-gradient(
+      180deg,
+      var(--clear) 0,
+      var(--clear) 3.5rem,
+      #000 8.5rem,
+      #000 42%,
+      var(--half) 54%,
+      var(--clear) 64%,
+      var(--clear) 100%
+    );
+  }
+}
+
+@media (width < 45rem) {
+  .lp,
+  .lp-menu {
+    --frame: 0.375rem;
+    --pad: 1.125rem;
+  }
+
+  .lp-title p {
+    font-size: 0.9375rem;
+  }
+
+  .lp-title p span {
+    display: none;
+  }
+
+  .lp-view button {
+    min-height: 2.25rem;
+  }
+
+  .lp-left {
+    bottom: calc(var(--pad) + 2.25rem);
+    width: auto;
+    right: var(--pad);
+  }
+
+  .lp-h1 {
+    font-size: clamp(1.875rem, 9vw, 2.375rem);
+  }
+
+  .lp-lede {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .lp-actions {
+    margin-top: 1.125rem;
+  }
+
+  .lp-actions > * {
+    flex: 1 1 0;
+    padding-inline: 0.75rem;
+  }
+
+  /* On a phone the rail is four bars to tap, not four words. */
+  .lp-rail {
+    right: var(--pad);
+    margin-left: 0;
+    gap: 0.375rem;
+  }
+
+  .lp-rail button {
+    flex: 1;
+    padding: 0;
+  }
+
+  .lp-rail button span,
+  .lp-rail button b {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .lp-rail button::before {
+    content: '';
+    position: absolute;
+    inset: auto 0 0.5625rem;
+    height: 2px;
+    border-radius: 2px;
+    background: oklch(22% 0.035 300 / 0.14);
+  }
+
+  .lp-rail button::after {
+    right: 0;
+    left: 0;
+  }
+
+  .lp-cue {
+    display: none;
+  }
+
+  .lp-reset {
+    bottom: auto;
+    top: 7.25rem;
+  }
+
+  /* No room for the description of a room you tap; a chapter's own labels stay whole. */
+  .lp-tag:not([data-pinned]) .lp-tag-body span {
+    display: none;
+  }
+}
+
+/* A short phone: drop the line that can go. */
+@media (width < 45rem) and (height < 43rem) {
+  .lp-fact {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-canvas,
+  .lp-tag-body,
+  .lp-burger i,
+  .lp-menu-word {
+    transition-duration: 1ms;
+  }
+
+  .lp-reset {
+    animation: none;
+  }
+}
