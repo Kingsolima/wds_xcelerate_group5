@@ -5,6 +5,7 @@ import { pool } from './db.ts';
 import { auth } from './auth/index.ts';
 import { authRouter } from './routes/auth.ts';
 import { listingsRouter, meRouter } from './routes/listings.ts';
+import { listingReviewsRouter, reviewsRouter } from './routes/reviews.ts';
 import { errorHandler } from './errors.ts';
 
 const app = express();
@@ -23,7 +24,9 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.use('/api/auth', authRouter(auth));
+app.use('/api/listings/:id/reviews', listingReviewsRouter({ pool, auth }));
 app.use('/api/listings', listingsRouter({ pool, auth }));
+app.use('/api/reviews', reviewsRouter({ pool, auth }));
 app.use('/api/me', meRouter({ pool, auth }));
 app.use('/api/groups', groupsRouter({ pool, auth }));
 
