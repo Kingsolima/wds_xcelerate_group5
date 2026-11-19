@@ -9,6 +9,7 @@ import pg from 'pg';
 import { groupsRouter } from '../src/routes/groups.ts';
 import { errorHandler } from '../src/errors.ts';
 import type { Role } from '../src/auth/types.ts';
+import { sampleGroup } from './fixtures.ts';
 
 const url = process.env.TEST_DATABASE_URL;
 
@@ -19,9 +20,10 @@ describe('groups API (database)', { skip: !url && 'TEST_DATABASE_URL not set' },
   let listingId: string;
   let groupId: string;
 
-  const users: Record<'student' | 'student2' | 'landlord', { id: string; role: Role }> = {
+  const users: Record<'student' | 'student2' | 'student3' | 'landlord', { id: string; role: Role }> = {
     student: { id: randomUUID(), role: 'student' },
     student2: { id: randomUUID(), role: 'student' },
+    student3: { id: randomUUID(), role: 'student' },
     landlord: { id: randomUUID(), role: 'landlord' },
   };
 
@@ -108,6 +110,9 @@ describe('groups API (database)', { skip: !url && 'TEST_DATABASE_URL not set' },
       if (listingId) {
         await pool.query('DELETE FROM groups WHERE listing_id = $1', [listingId]);
       }
+      await pool.query('DELETE FROM groups WHERE created_by = ANY($1::uuid[])', [
+        Object.values(users).map((u) => u.id),
+      ]);
 
       await pool.query(
         `DELETE FROM neon_auth."user" WHERE id = ANY($1::uuid[])`,
@@ -118,117 +123,99 @@ describe('groups API (database)', { skip: !url && 'TEST_DATABASE_URL not set' },
     }
   });
 
-  test('student creates a group and becomes its first member', async () => {
-    const res = await call('POST', '/groups', 'student', {
-      listingId,
-      capacity: 4,
-    });
+  const get = async (id: string) => {
+    const res = await call('GET', `/groups/${id}`);
+    assert.equal(res.status, 200);
+    return res.json();
+  };
 
+  test('student creates a group and becomes its first member', async () => {
+    const res = await call('POST', '/groups', 'student', sampleGroup({ listingId, spotsTotal: 4 }));
     assert.equal(res.status, 201);
 
     const group = await res.json();
     groupId = group.id;
 
     assert.equal(group.listingId, listingId);
-    assert.equal(group.capacity, 4);
+    assert.equal(group.spotsTotal, 4);
     assert.equal(group.createdBy, users.student.id);
+    assert.deepEqual(group.memberIds, [users.student.id]);
+    assert.deepEqual(group.members, ['Test Student']);
+    assert.equal(group.moveIn, '2027-05-01');
+  });
 
-    const detailsRes = await call('GET', `/groups/${group.id}`, 'student');
-    assert.equal(detailsRes.status, 200);
+  test('anyone can browse groups without signing in', async () => {
+    const list = await call('GET', '/groups');
+    assert.equal(list.status, 200);
+    const groups = await list.json();
+    assert.ok(groups.some((g: { id: string }) => g.id === groupId));
 
-    const details = await detailsRes.json();
+    const one = await get(groupId);
+    assert.equal(one.title, sampleGroup().title);
+  });
 
-    assert.equal(details.members.length, 1);
-    assert.equal(details.members[0].userId, users.student.id);
-    assert.equal(details.spotsAvailable, 3);
+  test('a group bigger than the listing is rejected', async () => {
+    const res = await call('POST', '/groups', 'student', sampleGroup({ listingId, spotsTotal: 5 }));
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error, 'capacity_exceeds_beds');
+  });
+
+  test('a group needs no listing', async () => {
+    const res = await call('POST', '/groups', 'student', sampleGroup());
+    assert.equal(res.status, 201);
+    assert.equal((await res.json()).listingId, undefined);
   });
 
   test('another student can join the group', async () => {
     const res = await call('POST', `/groups/${groupId}/join`, 'student2');
-
     assert.equal(res.status, 200);
 
-    const detailsRes = await call('GET', `/groups/${groupId}`, 'student');
-    assert.equal(detailsRes.status, 200);
-
-    const details = await detailsRes.json();
-
+    const details = await get(groupId);
+    assert.deepEqual(details.memberIds, [users.student.id, users.student2.id]);
     assert.equal(details.members.length, 2);
-    assert.ok(
-      details.members.some(
-        (member: { userId: string }) => member.userId === users.student2.id,
-      ),
-    );
-    assert.equal(details.spotsAvailable, 2);
   });
-    test('student cannot join the same group twice', async () => {
+
+  test('student cannot join the same group twice', async () => {
     const res = await call('POST', `/groups/${groupId}/join`, 'student2');
-
     assert.equal(res.status, 409);
-
-    const detailsRes = await call('GET', `/groups/${groupId}`, 'student');
-    const details = await detailsRes.json();
-
-    assert.equal(details.members.length, 2);
-    assert.equal(details.spotsAvailable, 2);
+    assert.equal((await get(groupId)).members.length, 2);
   });
-    test('student can leave a group', async () => {
-    const res = await call('POST', `/groups/${groupId}/leave`, 'student2');
 
-    assert.equal(res.status, 200);
-
-    const detailsRes = await call('GET', `/groups/${groupId}`, 'student');
-    assert.equal(detailsRes.status, 200);
-
-    const details = await detailsRes.json();
-
-    assert.equal(details.members.length, 1);
-    assert.equal(details.members[0].userId, users.student.id);
-    assert.equal(details.spotsAvailable, 3);
-  });
-    test('group creator cannot leave', async () => {
-    const res = await call('POST', `/groups/${groupId}/leave`, 'student');
-
+  test('landlords cannot join groups', async () => {
+    const res = await call('POST', `/groups/${groupId}/join`, 'landlord');
     assert.equal(res.status, 403);
-
-    const detailsRes = await call('GET', `/groups/${groupId}`, 'student');
-    assert.equal(detailsRes.status, 200);
-
-    const details = await detailsRes.json();
-
-    assert.equal(details.members.length, 1);
-    assert.equal(details.members[0].userId, users.student.id);
-    assert.equal(details.spotsAvailable, 3);
   });
-    test('students cannot join a full group', async () => {
-    const createRes = await call('POST', '/groups', 'student', {
-      listingId,
-      capacity: 1,
-    });
 
+  test('student can leave a group', async () => {
+    const res = await call('POST', `/groups/${groupId}/leave`, 'student2');
+    assert.equal(res.status, 200);
+    assert.deepEqual((await get(groupId)).memberIds, [users.student.id]);
+  });
+
+  test('group creator cannot leave', async () => {
+    const res = await call('POST', `/groups/${groupId}/leave`, 'student');
+    assert.equal(res.status, 403);
+    assert.deepEqual((await get(groupId)).memberIds, [users.student.id]);
+  });
+
+  test('offline friends take up spots, and a full group turns students away', async () => {
+    // Creator plus one offline friend, out of 3: one open spot.
+    const createRes = await call('POST', '/groups', 'student', sampleGroup({ haveCount: 2, spotsTotal: 3 }));
     assert.equal(createRes.status, 201);
+    const group = await createRes.json();
+    assert.deepEqual(group.members, ['Test Student', 'Housemate 1']);
 
-    const fullGroup = await createRes.json();
+    assert.equal((await call('POST', `/groups/${group.id}/join`, 'student2')).status, 200);
 
-    const joinRes = await call(
-      'POST',
-      `/groups/${fullGroup.id}/join`,
-      'student2',
-    );
+    const full = await call('POST', `/groups/${group.id}/join`, 'student3');
+    assert.equal(full.status, 409);
+    assert.equal((await full.json()).error, 'group_full');
+    assert.equal((await get(group.id)).members.length, 3);
+  });
 
-    assert.equal(joinRes.status, 409);
-
-    const detailsRes = await call(
-      'GET',
-      `/groups/${fullGroup.id}`,
-      'student',
-    );
-
-    assert.equal(detailsRes.status, 200);
-
-    const details = await detailsRes.json();
-
-    assert.equal(details.members.length, 1);
-    assert.equal(details.spotsAvailable, 0);
+  test('only the creator can delete a group', async () => {
+    assert.equal((await call('DELETE', `/groups/${groupId}`, 'student2')).status, 403);
+    assert.equal((await call('DELETE', `/groups/${groupId}`, 'student')).status, 204);
+    assert.equal((await call('GET', `/groups/${groupId}`)).status, 404);
   });
 });

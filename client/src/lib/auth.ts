@@ -23,8 +23,19 @@ function neonAuth() {
   return neon;
 }
 
-/** Better Auth client: signIn.email, signUp.email, signOut, getSession. */
-export const authClient = () => neonAuth().adapter;
+type AuthResult = Promise<{ error: { message?: string; status?: number } | null }>;
+
+/**
+ * Better Auth's email OTP plugin (/email-otp/*). Neon adds the plugin to its client, but the
+ * client type createInternalNeonAuth returns leaves plugin methods out, so they're typed here.
+ */
+type EmailOtp = {
+  sendVerificationOtp(body: { email: string; type: 'email-verification' | 'sign-in' | 'forget-password' }): AuthResult;
+  verifyEmail(body: { email: string; otp: string }): AuthResult;
+};
+
+/** Better Auth client: signIn.email, signUp.email, signOut, getSession, emailOtp.*. */
+export const authClient = () => neonAuth().adapter as ReturnType<typeof create>['adapter'] & { emailOtp: EmailOtp };
 
 /** The signed-in user's JWT for `Authorization: Bearer`, or null. Neon caches it until it expires. */
 export async function getToken(): Promise<string | null> {

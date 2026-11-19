@@ -11,72 +11,47 @@ import { errorHandler } from '../src/errors.ts';
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GroupId, GroupInput } from '../src/groups/schema.ts';
+import { sampleGroup } from './fixtures.ts';
 
 const validListingId = '550e8400-e29b-41d4-a716-446655440000';
 
 describe('GroupInput', () => {
+  const valid = (overrides: Record<string, unknown> = {}) => GroupInput.safeParse(sampleGroup(overrides)).success;
+
   test('accepts a valid group', () => {
-    const result = GroupInput.safeParse({
-      listingId: validListingId,
-      capacity: 4,
-    });
-
-    assert.equal(result.success, true);
+    assert.equal(valid(), true);
+    assert.equal(valid({ listingId: validListingId }), true);
   });
 
-  test('rejects a group with zero capacity', () => {
-    const result = GroupInput.safeParse({
-      listingId: validListingId,
-      capacity: 0,
-    });
-
-    assert.equal(result.success, false);
+  test('rejects a group with no open spot', () => {
+    assert.equal(valid({ haveCount: 4, spotsTotal: 4 }), false);
   });
 
-  test('rejects a negative capacity', () => {
-    const result = GroupInput.safeParse({
-      listingId: validListingId,
-      capacity: -2,
-    });
-
-    assert.equal(result.success, false);
+  test('rejects fewer than 2 or more than 10 spots', () => {
+    assert.equal(valid({ spotsTotal: 1 }), false);
+    assert.equal(valid({ spotsTotal: 11 }), false);
   });
 
-  test('rejects capacity greater than 20', () => {
-    const result = GroupInput.safeParse({
-      listingId: validListingId,
-      capacity: 21,
-    });
-
-    assert.equal(result.success, false);
-  });
-
-  test('rejects non-integer capacity', () => {
-    const result = GroupInput.safeParse({
-      listingId: validListingId,
-      capacity: 3.5,
-    });
-
-    assert.equal(result.success, false);
+  test('rejects non-integer spots', () => {
+    assert.equal(valid({ spotsTotal: 3.5 }), false);
   });
 
   test('rejects an invalid listing ID', () => {
-    const result = GroupInput.safeParse({
-      listingId: 'not-a-uuid',
-      capacity: 4,
-    });
+    assert.equal(valid({ listingId: 'not-a-uuid' }), false);
+  });
 
-    assert.equal(result.success, false);
+  test('rejects unknown areas and tags', () => {
+    assert.equal(valid({ neighbourhoods: ['Narnia'] }), false);
+    assert.equal(valid({ neighbourhoods: [] }), false);
+    assert.equal(valid({ tags: ['loud'] }), false);
+  });
+
+  test('rejects a short body', () => {
+    assert.equal(valid({ body: 'Hi' }), false);
   });
 
   test('rejects unexpected fields', () => {
-    const result = GroupInput.safeParse({
-      listingId: validListingId,
-      capacity: 4,
-      createdBy: 'someone-else',
-    });
-
-    assert.equal(result.success, false);
+    assert.equal(valid({ createdBy: 'someone-else' }), false);
   });
 });
 
@@ -137,7 +112,7 @@ describe('Group API authentication and validation', () => {
     const res = await fetch(baseUrl, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ listingId: validListingId, capacity: 4 }),
+      body: JSON.stringify(sampleGroup()),
     });
 
     assert.equal(res.status, 401);
@@ -150,20 +125,20 @@ describe('Group API authentication and validation', () => {
         'content-type': 'application/json',
         'x-test-role': 'landlord',
       },
-      body: JSON.stringify({ listingId: validListingId, capacity: 4 }),
+      body: JSON.stringify(sampleGroup()),
     });
 
     assert.equal(res.status, 403);
   });
 
-  test('students cannot create groups with invalid capacity', async () => {
+  test('students cannot create groups with invalid spots', async () => {
     const res = await fetch(baseUrl, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         'x-test-role': 'student',
       },
-      body: JSON.stringify({ listingId: validListingId, capacity: -3 }),
+      body: JSON.stringify(sampleGroup({ spotsTotal: -3 })),
     });
 
     assert.equal(res.status, 400);

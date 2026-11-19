@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 import { formatMonth, formatPrice, plural, timeAgo } from '@/lib/format';
 import { Avatar } from './Avatar';
 import { Chip, type Tone } from './Chip';
+import { JoinGroupButton } from './JoinGroupButton';
 import { KnockButton } from './KnockButton';
 
 const kindTone: Record<RoommatePost['kind'], Tone> = {
@@ -89,7 +90,12 @@ export function RoommatePostCard({ post, className }: { post: RoommatePost; clas
           </Link>
         )}
       </div>
-      <KnockButton id={`post:${post.id}`} name={post.title} className="mt-4 w-full" />
+      {/* Posts from the API are real groups you can join; the seed posts only take knocks. */}
+      {post.memberIds ? (
+        <JoinGroupButton post={post} className="mt-4 w-full" />
+      ) : (
+        <KnockButton id={`post:${post.id}`} name={post.title} className="mt-4 w-full" />
+      )}
     </article>
   );
 }

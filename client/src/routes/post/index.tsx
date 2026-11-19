@@ -104,7 +104,11 @@ function PostPage() {
             <SubletForm />
           </SignedInAs>
         )}
-        {type === 'roommate' && <RoommateForm key="roommate" />}
+        {type === 'roommate' && (
+          <SignedInAs key="roommate" roles={['student']} wrongRole="Only students with a verified @uwo.ca or @ivey.ca email can post roommate ads.">
+            <RoommateForm />
+          </SignedInAs>
+        )}
         {type === 'listing' && (
           <SignedInAs key="listing" roles={['landlord', 'admin']} wrongRole="Student accounts can post sublets, not leases. Landlords sign up with their own email.">
             <LandlordForm />

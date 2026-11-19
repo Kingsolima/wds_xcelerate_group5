@@ -2,7 +2,8 @@
   Everything the app reads and writes goes through here.
   - Listings come from the Express API (/api/listings). The seed listings in listings.ts are shown
     after them, because reviews, landlords and roommate posts still point at the seed ids.
-  - Reviews, landlords and roommate posts have no endpoints yet, so they stay in the browser.
+  - Roommate posts come from /api/groups, with the seed posts in roommates.ts shown after them.
+  - Reviews and landlords have no endpoints yet, so they stay in the browser.
     When they get endpoints, replace those function bodies with request() calls that return the
     same shape; nothing else needs to change.
 */
@@ -39,7 +40,7 @@ export class NotFoundError extends Error {
 export const isServerId = (id: string) => z.uuid().safeParse(id).success;
 
 // What the user created in this browser, kept between visits.
-const KEYS = { reviews: 'knock:my-reviews', posts: 'knock:my-posts' };
+const KEYS = { reviews: 'knock:my-reviews' };
 
 function loadCreated<T>(key: string, schema: { safeParse: (v: unknown) => { success: boolean } }) {
   const items = readJSON<unknown[]>(key, [], Array.isArray);
@@ -48,7 +49,6 @@ function loadCreated<T>(key: string, schema: { safeParse: (v: unknown) => { succ
 
 const db = {
   reviews: [...loadCreated<Review>(KEYS.reviews, ReviewSchema), ...seedReviews],
-  posts: [...loadCreated<RoommatePost>(KEYS.posts, RoommatePostSchema), ...seedPosts],
   landlords,
 };
 
@@ -160,8 +160,12 @@ export const api = {
       : Promise.reject(new NotFoundError('Landlord', id));
   },
 
-  getRoommatePosts: () =>
-    wait([...db.posts].sort((a, b) => b.postedAt.localeCompare(a.postedAt))),
+  /** Posts from the API (newest first), then the seed posts. */
+  async getRoommatePosts(): Promise<RoommatePost[]> {
+    const fromServer = RoommatePostSchema.array().parse(await request<unknown>('/groups'));
+    const seeds = [...seedPosts].sort((a, b) => b.postedAt.localeCompare(a.postedAt));
+    return [...fromServer, ...seeds];
+  },
 
   /** Needs a signed-in user: students post sublets, landlords post leases. */
   async createListing(input: NewListing & Partial<Pick<ListingRecord, ServerOwned>>): Promise<Listing> {
@@ -177,10 +181,32 @@ export const api = {
     return wait(review);
   },
 
-  createRoommatePost(input: Omit<RoommatePost, 'id' | 'postedAt'>) {
-    const post = RoommatePostSchema.parse({ ...input, id: newId('p'), postedAt: new Date().toISOString() });
-    db.posts.unshift(post);
-    writeJSON(KEYS.posts, db.posts.filter((p) => p.id.startsWith('p-')));
-    return wait(post);
+  /** Students only. The poster becomes the group's first member. */
+  async createRoommatePost(input: Omit<RoommatePost, 'id' | 'postedAt'>): Promise<RoommatePost> {
+    const body = {
+      kind: input.kind,
+      title: input.title,
+      body: input.body,
+      author: input.author,
+      haveCount: input.members.length,
+      spotsTotal: input.spotsTotal,
+      budget: input.budget,
+      moveIn: input.moveIn,
+      months: input.months,
+      neighbourhoods: input.neighbourhoods,
+      tags: input.tags,
+      ...(input.listingId && isServerId(input.listingId) ? { listingId: input.listingId } : {}),
+    };
+    return RoommatePostSchema.parse(await request<unknown>('/groups', { method: 'POST', body, auth: true }));
+  },
+
+  /** Take an open spot in a group. Students only; returns the updated post. */
+  async joinGroup(id: string): Promise<RoommatePost> {
+    return RoommatePostSchema.parse(await request<unknown>(`/groups/${id}/join`, { method: 'POST', auth: true }));
+  },
+
+  /** Give up your spot. The person who started the group can't leave it. */
+  async leaveGroup(id: string): Promise<RoommatePost> {
+    return RoommatePostSchema.parse(await request<unknown>(`/groups/${id}/leave`, { method: 'POST', auth: true }));
   },
 };

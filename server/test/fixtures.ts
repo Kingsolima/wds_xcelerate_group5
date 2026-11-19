@@ -25,3 +25,21 @@ export function sampleListing(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+/** A valid roommate group request body. Override any field. */
+export function sampleGroup(overrides: Record<string, unknown> = {}) {
+  return {
+    kind: 'group',
+    title: 'Forming a group of 4 for Old North',
+    body: 'Two of us looking for two more to sign a four-bed together next year.',
+    author: { name: 'Test Student', detail: '3rd-year Science' },
+    haveCount: 1,
+    spotsTotal: 4,
+    budget: 750,
+    moveIn: '2027-05-01',
+    months: 12,
+    neighbourhoods: ['Old North'],
+    tags: ['clean', 'social'],
+    ...overrides,
+  };
+}

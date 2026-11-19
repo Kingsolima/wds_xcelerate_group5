@@ -32,7 +32,56 @@ function SignInPage() {
   const [password, setPassword] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Set once Neon has emailed a verification code; shows the code step. */
   const [checkInbox, setCheckInbox] = useState(false);
+  const [code, setCode] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
+
+  async function finishSignIn() {
+    const { error } = await authClient().signIn.email({ email: email.trim(), password });
+    if (error) return setError(error.message ?? 'That email and password don’t match.');
+    await queryClient.invalidateQueries({ queryKey: ['me'] });
+    navigate({ href: redirect });
+  }
+
+  async function sendCode() {
+    const { error } = await authClient().emailOtp.sendVerificationOtp({
+      email: email.trim(),
+      type: 'email-verification',
+    });
+    if (error) throw new Error(error.message ?? 'We couldn’t send a code. Try again.');
+  }
+
+  async function onVerify(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setNotice(null);
+    setPending(true);
+    try {
+      const { error } = await authClient().emailOtp.verifyEmail({ email: email.trim(), otp: code.trim() });
+      if (error) return setError(error.message ?? 'That code didn’t work. Check it and try again.');
+      // Verified: sign in with the password they just typed so the API accepts their token.
+      await finishSignIn();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'That didn’t work. Try again.');
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function onResend() {
+    setError(null);
+    setNotice(null);
+    setPending(true);
+    try {
+      await sendCode();
+      setNotice(`We sent a new code to ${email.trim()}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'We couldn’t send a code. Try again.');
+    } finally {
+      setPending(false);
+    }
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,19 +98,24 @@ function SignInPage() {
           callbackURL: `${window.location.origin}${redirect}`,
         });
         if (error) return setError(error.message ?? 'That didn’t work. Try again.');
-        // The API only accepts verified emails, so there's nothing to do until they click the link.
+        // Neon emails a verification code on sign-up. The API only accepts verified emails,
+        // so sign out until they enter it.
         await auth.signOut().catch(() => {});
+        setCode('');
         setCheckInbox(true);
         return;
       }
 
       const { error } = await auth.signIn.email({ email: email.trim(), password });
       if (error) {
-        return setError(
-          error.status === 403
-            ? 'Verify your email first: check your inbox for the link we sent.'
-            : (error.message ?? 'That email and password don’t match.'),
-        );
+        if (error.status === 403) {
+          // Signed up but never verified: send a fresh code and ask for it.
+          await sendCode();
+          setCode('');
+          setCheckInbox(true);
+          return;
+        }
+        return setError(error.message ?? 'That email and password don’t match.');
       }
       await queryClient.invalidateQueries({ queryKey: ['me'] });
       navigate({ href: redirect });
@@ -85,6 +139,7 @@ function SignInPage() {
               setMode(m);
               setError(null);
               setCheckInbox(false);
+              setNotice(null);
             }}
             options={[
               { value: 'sign-in', label: 'Sign in' },
@@ -108,19 +163,53 @@ function SignInPage() {
             client/.env.example) and restart the dev server.
           </p>
         ) : checkInbox ? (
-          <div role="status" className="rounded-2xl bg-mint p-6 text-mint-ink">
-            <h2 className="text-xl">Check your inbox</h2>
-            <p className="mt-2 font-text">
-              We sent a link to {email}. Open it to verify your email, then sign in.
-            </p>
-            <Button
-              className="mt-4"
-              color="white"
-              onClick={() => (setMode('sign-in'), setCheckInbox(false))}
-            >
-              Back to sign in
+          <form onSubmit={onVerify} className="flex flex-col gap-5">
+            <div role="status" className="rounded-2xl bg-mint p-6 text-mint-ink">
+              <h2 className="text-xl">Check your inbox</h2>
+              <p className="mt-2 font-text">
+                We sent a code to {email.trim()}. Enter it below to verify your email.
+              </p>
+            </div>
+            <Field label="Verification code">
+              {(a) => (
+                <TextInput
+                  {...a}
+                  name="code"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  required
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\s/g, ''))}
+                />
+              )}
+            </Field>
+            {notice && <p role="status" className="font-text text-sm text-ink-soft">{notice}</p>}
+            {error && (
+              <p
+                role="alert"
+                className="rounded-xl bg-danger-wash px-4 py-3 font-text text-sm text-danger"
+              >
+                {error}
+              </p>
+            )}
+            <Button type="submit" size="lg" disabled={pending || !code.trim()}>
+              {pending ? 'One moment…' : 'Verify and sign in'}
             </Button>
-          </div>
+            <div className="flex flex-wrap gap-3">
+              <Button type="button" color="ghost" disabled={pending} onClick={onResend}>
+                Send a new code
+              </Button>
+              <Button
+                type="button"
+                color="ghost"
+                disabled={pending}
+                onClick={() => (setMode('sign-in'), setCheckInbox(false), setError(null), setNotice(null))}
+              >
+                Back to sign in
+              </Button>
+            </div>
+          </form>
         ) : (
           <form onSubmit={onSubmit} className="flex flex-col gap-5">
             {mode === 'sign-up' && (
