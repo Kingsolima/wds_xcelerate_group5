@@ -140,6 +140,8 @@ export const ReviewSchema = z.object({
   title: z.string(),
   body: z.string(),
   createdAt: z.string(),
+  /** Reviews from the API only: the user who wrote it. */
+  authorId: z.string().optional(),
 });
 export type Review = z.infer<typeof ReviewSchema>;
 

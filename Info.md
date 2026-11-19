@@ -76,7 +76,7 @@ Sign-up, sign-in (email + password or magic link), email verification and sign-o
 - `/sign-in` signs in or creates an account with email + password. New accounts get a verification email, and the API rejects them until it's clicked.
 - `client/src/data/http.ts` calls `/api/...` and adds `Authorization: Bearer <JWT>` for signed-in routes. The JWT comes from Neon's `getJWTToken()`, not `getSession().session.token` (that one is a session id, not a JWT).
 - The nav and the post page read the role from `GET /api/auth/me`. Sublets need a student account and leases need a landlord account.
-- Listings come from the API, and the seed listings in `client/src/data/listings.ts` are shown after them. Reviews are still local mock data in `client/src/data/api.ts`: the reviews API below exists, but the frontend isn't connected to it yet. Landlords are mock data until their endpoints exist.
+- Listings come from the API, and the seed listings in `client/src/data/listings.ts` are shown after them. Reviews of API listings are loaded from and saved to the reviews API below: posting needs a signed-in student, and the author (or an admin) gets a Delete button. The seed listings aren't in the database, so their reviews stay in the browser. Landlords are mock data until their endpoints exist.
 
 **Running it locally:** fill in `server/.env` and `client/.env`, run `npm run migrate -w server` once, then `npm run dev` from the repo root (Express on 3001, Vite on 5173, `/api` proxied).
 

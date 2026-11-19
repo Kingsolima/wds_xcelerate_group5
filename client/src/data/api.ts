@@ -3,9 +3,10 @@
   - Listings come from the Express API (/api/listings). The seed listings in listings.ts are shown
     after them, because reviews, landlords and roommate posts still point at the seed ids.
   - Roommate posts come from /api/groups, with the seed posts in roommates.ts shown after them.
-  - Reviews and landlords have no endpoints yet, so they stay in the browser.
-    When they get endpoints, replace those function bodies with request() calls that return the
-    same shape; nothing else needs to change.
+  - Reviews of API listings come from /api/listings/:id/reviews and are saved there. The seed
+    listings aren't in the database, so their reviews (seed ones, and any written in this browser)
+    stay in the browser.
+  - Landlords have no endpoints yet, so they stay in the browser.
 */
 import { z } from 'zod';
 import {
@@ -60,13 +61,32 @@ const wait = <T>(value: T) =>
 /** The server returns at most 50 listings per request. */
 const PAGE_SIZE = 50;
 
-async function fetchAllListings(): Promise<ListingRecord[]> {
-  const all: ListingRecord[] = [];
+/** API listings arrive with their rating already worked out from the reviews table. */
+const ServerListingSchema = ListingSchema.extend({
+  rating: z.number().default(0),
+  reviewCount: z.number().default(0),
+});
+
+async function fetchAllListings(): Promise<Listing[]> {
+  const all: Listing[] = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const page = await request<unknown>(`/listings?limit=${PAGE_SIZE}&offset=${offset}`);
-    const records = ListingSchema.array().parse(page);
+    const records = ServerListingSchema.array().parse(page);
     all.push(...records);
     if (records.length < PAGE_SIZE) return all;
+  }
+}
+
+const ListingReviewsSchema = z.object({ reviews: ReviewSchema.array() });
+
+/** Reviews of one API listing, newest first. A listing deleted in the meantime has none. */
+async function fetchListingReviews(listingId: string): Promise<Review[]> {
+  try {
+    const data = await request<unknown>(`/listings/${listingId}/reviews`);
+    return ListingReviewsSchema.parse(data).reviews;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return [];
+    throw error;
   }
 }
 
@@ -95,6 +115,7 @@ export function ratingFor(reviews: Review[]): RatingSummary {
   return { average: mean((r) => r.rating), count, scores, distribution };
 }
 
+/** Seed listings only: their rating comes from the reviews kept in the browser. */
 function withRating(record: ListingRecord): Listing {
   const { average, count } = ratingFor(db.reviews.filter((r) => r.listingId === record.id));
   return { ...record, rating: average, reviewCount: count };
@@ -131,7 +152,7 @@ export const api = {
 
   async getListings(): Promise<Listing[]> {
     const fromServer = await fetchAllListings();
-    return [...fromServer, ...listingRecords].map(withRating);
+    return [...fromServer, ...listingRecords.map(withRating)];
   },
 
   async getListing(id: string): Promise<Listing> {
@@ -141,15 +162,19 @@ export const api = {
       return wait(withRating(record));
     }
     try {
-      return withRating(ListingSchema.parse(await request<unknown>(`/listings/${id}`)));
+      return ServerListingSchema.parse(await request<unknown>(`/listings/${id}`));
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) throw new NotFoundError('Listing', id);
       throw error;
     }
   },
 
-  getReviews: () =>
-    wait([...db.reviews].sort((a, b) => b.createdAt.localeCompare(a.createdAt))),
+  /** Every review, newest first: the API listings' reviews plus the ones kept in the browser. */
+  async getReviews(): Promise<Review[]> {
+    const reviewed = (await fetchAllListings()).filter((l) => l.reviewCount > 0);
+    const fromServer = (await Promise.all(reviewed.map((l) => fetchListingReviews(l.id)))).flat();
+    return [...fromServer, ...db.reviews].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
 
   getLandlords: () => wait(db.landlords.map(landlordSummary)),
 
@@ -171,14 +196,45 @@ export const api = {
   async createListing(input: NewListing & Partial<Pick<ListingRecord, ServerOwned>>): Promise<Listing> {
     const { id: _id, postedAt: _at, postedBy: _by, westernVerified: _wv, landlordId: _ll, ...body } = input;
     const created = await request<unknown>('/listings', { method: 'POST', body, auth: true });
-    return withRating(ListingSchema.parse(created));
+    return ServerListingSchema.parse(created);
   },
 
-  createReview(input: Omit<Review, 'id' | 'createdAt'>) {
+  /**
+   * API listings: saved through the API. Needs a signed-in student; the author's name comes from
+   * their account, so `author.name` is ignored. Seed listings: kept in this browser only.
+   */
+  async createReview(input: Omit<Review, 'id' | 'createdAt' | 'authorId'>): Promise<Review> {
+    if (isServerId(input.listingId)) {
+      const body = {
+        authorDetail: input.author.detail,
+        livedThere: input.livedThere,
+        rating: input.rating,
+        scores: input.scores,
+        title: input.title,
+        body: input.body,
+      };
+      const created = await request<unknown>(`/listings/${input.listingId}/reviews`, {
+        method: 'POST',
+        body,
+        auth: true,
+      });
+      return ReviewSchema.parse(created);
+    }
     const review = ReviewSchema.parse({ ...input, id: newId('r'), createdAt: new Date().toISOString() });
     db.reviews.unshift(review);
     writeJSON(KEYS.reviews, db.reviews.filter((r) => r.id.startsWith('r-')));
     return wait(review);
+  },
+
+  /** API reviews: the author or an admin. Reviews written in this browser can be removed too. */
+  async deleteReview(id: string): Promise<void> {
+    if (isServerId(id)) {
+      await request<void>(`/reviews/${id}`, { method: 'DELETE', auth: true });
+      return;
+    }
+    if (!id.startsWith('r-')) return;
+    db.reviews = db.reviews.filter((r) => r.id !== id);
+    writeJSON(KEYS.reviews, db.reviews.filter((r) => r.id.startsWith('r-')));
   },
 
   /** Students only. The poster becomes the group's first member. */
