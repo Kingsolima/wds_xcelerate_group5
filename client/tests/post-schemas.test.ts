@@ -8,6 +8,7 @@ import {
   subletToListing,
 } from '@/lib/post-schemas';
 import { ListingSchema, RoommatePostSchema } from '@/data/data';
+import { ListingInput } from '../../server/src/listings/schema.ts';
 
 const sublet = {
   title: 'Furnished room near UC Hill',
@@ -91,5 +92,37 @@ describe('post forms', () => {
     const listing = landlordToListing(parsed);
     expect(listing.kind).toBe('lease');
     expect(listing.westernVerified).toBe(false);
+  });
+});
+
+// The server's own validator: if this fails, posting from the form would get a 400.
+describe('form output matches the server’s ListingInput', () => {
+  const strip = ({ westernVerified: _w, landlordId: _l, postedBy: _p, ...rest }: Record<string, unknown>) => rest;
+  const place = {
+    title: 'Furnished room near UC Hill',
+    price: '650',
+    street: 'Broughdale Ave',
+    neighbourhood: 'Broughdale',
+    beds: '4',
+    baths: '1',
+    furnished: true,
+    utilitiesIncluded: false,
+    amenities: ['laundry'],
+    description: 'A bright room in a quiet four-bed house, five minutes from campus.',
+    cover: 'bedWhite',
+    name: 'Sam',
+    availableFrom: '2027-05-01',
+  };
+
+  test('sublet', () => {
+    const v = subletSchema.parse({ ...place, type: 'room', availableTo: '2027-08-31' });
+    const result = ListingInput.safeParse(strip(subletToListing(v)));
+    expect(result.error?.issues ?? []).toEqual([]);
+  });
+
+  test('lease', () => {
+    const v = landlordListingSchema.parse({ ...place, type: 'house', lease: '12', roomsOpen: '4', onWesternList: false });
+    const result = ListingInput.safeParse(strip(landlordToListing(v)));
+    expect(result.error?.issues ?? []).toEqual([]);
   });
 });

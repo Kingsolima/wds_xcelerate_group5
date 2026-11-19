@@ -17,6 +17,7 @@ import { Route as PostIndexRouteImport } from './routes/post/index'
 import { Route as ReviewsIndexRouteImport } from './routes/reviews/index'
 import { Route as RoommatesIndexRouteImport } from './routes/roommates/index'
 import { Route as SavedIndexRouteImport } from './routes/saved/index'
+import { Route as SignInIndexRouteImport } from './routes/sign-in/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -58,6 +59,11 @@ const SavedIndexRoute = SavedIndexRouteImport.update({
   path: '/saved/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignInIndexRoute = SignInIndexRouteImport.update({
+  id: '/sign-in/',
+  path: '/sign-in/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/reviews/': typeof ReviewsIndexRoute
   '/roommates/': typeof RoommatesIndexRoute
   '/saved/': typeof SavedIndexRoute
+  '/sign-in/': typeof SignInIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/reviews': typeof ReviewsIndexRoute
   '/roommates': typeof RoommatesIndexRoute
   '/saved': typeof SavedIndexRoute
+  '/sign-in': typeof SignInIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/reviews/': typeof ReviewsIndexRoute
   '/roommates/': typeof RoommatesIndexRoute
   '/saved/': typeof SavedIndexRoute
+  '/sign-in/': typeof SignInIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/reviews/'
     | '/roommates/'
     | '/saved/'
+    | '/sign-in/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/reviews'
     | '/roommates'
     | '/saved'
+    | '/sign-in'
   id:
     | '__root__'
     | '/'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/reviews/'
     | '/roommates/'
     | '/saved/'
+    | '/sign-in/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -132,6 +144,7 @@ export interface RootRouteChildren {
   ReviewsIndexRoute: typeof ReviewsIndexRoute
   RoommatesIndexRoute: typeof RoommatesIndexRoute
   SavedIndexRoute: typeof SavedIndexRoute
+  SignInIndexRoute: typeof SignInIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -192,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SavedIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sign-in/': {
+      id: '/sign-in/'
+      path: '/sign-in'
+      fullPath: '/sign-in/'
+      preLoaderRoute: typeof SignInIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -204,6 +224,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReviewsIndexRoute: ReviewsIndexRoute,
   RoommatesIndexRoute: RoommatesIndexRoute,
   SavedIndexRoute: SavedIndexRoute,
+  SignInIndexRoute: SignInIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

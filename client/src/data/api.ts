@@ -1,7 +1,12 @@
 /*
-  The only file that knows the data is local. When the Express API exists, replace each function
-  body with a fetch('/api/...') call that returns the same shape; nothing else needs to change.
+  Everything the app reads and writes goes through here.
+  - Listings come from the Express API (/api/listings). The seed listings in listings.ts are shown
+    after them, because reviews, landlords and roommate posts still point at the seed ids.
+  - Reviews, landlords and roommate posts have no endpoints yet, so they stay in the browser.
+    When they get endpoints, replace those function bodies with request() calls that return the
+    same shape; nothing else needs to change.
 */
+import { z } from 'zod';
 import {
   ListingSchema,
   ReviewSchema,
@@ -14,11 +19,14 @@ import {
   type RoommatePost,
   type ScoreKey,
 } from './data';
+import { ApiError, request } from './http';
 import { landlords } from './landlords';
 import { listingRecords } from './listings';
 import { reviews as seedReviews } from './reviews';
 import { roommatePosts as seedPosts } from './roommates';
 import { readJSON, writeJSON } from '@/lib/store';
+
+export { ApiError } from './http';
 
 export class NotFoundError extends Error {
   constructor(what: string, id: string) {
@@ -27,8 +35,11 @@ export class NotFoundError extends Error {
   }
 }
 
+/** Listings from the API have UUID ids; seed listings have slugs like "broughdale-five". */
+export const isServerId = (id: string) => z.uuid().safeParse(id).success;
+
 // What the user created in this browser, kept between visits.
-const KEYS = { listings: 'knock:my-listings', reviews: 'knock:my-reviews', posts: 'knock:my-posts' };
+const KEYS = { reviews: 'knock:my-reviews', posts: 'knock:my-posts' };
 
 function loadCreated<T>(key: string, schema: { safeParse: (v: unknown) => { success: boolean } }) {
   const items = readJSON<unknown[]>(key, [], Array.isArray);
@@ -36,7 +47,6 @@ function loadCreated<T>(key: string, schema: { safeParse: (v: unknown) => { succ
 }
 
 const db = {
-  listings: [...loadCreated<ListingRecord>(KEYS.listings, ListingSchema), ...listingRecords],
   reviews: [...loadCreated<Review>(KEYS.reviews, ReviewSchema), ...seedReviews],
   posts: [...loadCreated<RoommatePost>(KEYS.posts, RoommatePostSchema), ...seedPosts],
   landlords,
@@ -46,6 +56,23 @@ const db = {
 const LATENCY = typeof window === 'undefined' ? 0 : 180;
 const wait = <T>(value: T) =>
   new Promise<T>((resolve) => setTimeout(() => resolve(structuredClone(value)), LATENCY));
+
+/** The server returns at most 50 listings per request. */
+const PAGE_SIZE = 50;
+
+async function fetchAllListings(): Promise<ListingRecord[]> {
+  const all: ListingRecord[] = [];
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const page = await request<unknown>(`/listings?limit=${PAGE_SIZE}&offset=${offset}`);
+    const records = ListingSchema.array().parse(page);
+    all.push(...records);
+    if (records.length < PAGE_SIZE) return all;
+  }
+}
+
+/** Fields the server sets itself; its strict schema rejects a POST that includes them. */
+type ServerOwned = 'id' | 'postedAt' | 'postedBy' | 'westernVerified' | 'landlordId';
+export type NewListing = Omit<ListingRecord, ServerOwned>;
 
 export type RatingSummary = {
   average: number;
@@ -79,19 +106,46 @@ export type LandlordSummary = Landlord & {
 };
 
 function landlordSummary(landlord: Landlord): LandlordSummary {
-  const listingIds = db.listings.filter((l) => l.landlordId === landlord.id).map((l) => l.id);
+  // Landlords only exist in the seed data so far, so only seed listings can belong to one.
+  const listingIds = listingRecords.filter((l) => l.landlordId === landlord.id).map((l) => l.id);
   const rating = ratingFor(db.reviews.filter((r) => listingIds.includes(r.listingId)));
   return { ...landlord, rating, listingIds };
 }
 
 const newId = (prefix: string) => `${prefix}-${Date.now().toString(36)}`;
 
-export const api = {
-  getListings: () => wait(db.listings.map(withRating)),
+/** The signed-in user, as GET /api/auth/me returns it. */
+export type Role = 'student' | 'landlord' | 'admin';
+export type AuthUser = { id: string; email: string; name: string; role: Role };
 
-  getListing(id: string) {
-    const record = db.listings.find((l) => l.id === id);
-    return record ? wait(withRating(record)) : Promise.reject(new NotFoundError('Listing', id));
+export const api = {
+  /** Null when nobody is signed in or the session has ended. */
+  async getMe(): Promise<AuthUser | null> {
+    try {
+      return await request<AuthUser>('/auth/me', { auth: true });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) return null;
+      throw error;
+    }
+  },
+
+  async getListings(): Promise<Listing[]> {
+    const fromServer = await fetchAllListings();
+    return [...fromServer, ...listingRecords].map(withRating);
+  },
+
+  async getListing(id: string): Promise<Listing> {
+    if (!isServerId(id)) {
+      const record = listingRecords.find((l) => l.id === id);
+      if (!record) throw new NotFoundError('Listing', id);
+      return wait(withRating(record));
+    }
+    try {
+      return withRating(ListingSchema.parse(await request<unknown>(`/listings/${id}`)));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) throw new NotFoundError('Listing', id);
+      throw error;
+    }
   },
 
   getReviews: () =>
@@ -109,11 +163,11 @@ export const api = {
   getRoommatePosts: () =>
     wait([...db.posts].sort((a, b) => b.postedAt.localeCompare(a.postedAt))),
 
-  createListing(input: Omit<ListingRecord, 'id' | 'postedAt'>) {
-    const record = ListingSchema.parse({ ...input, id: newId('l'), postedAt: new Date().toISOString() });
-    db.listings.unshift(record);
-    writeJSON(KEYS.listings, db.listings.filter((l) => l.id.startsWith('l-')));
-    return wait(withRating(record));
+  /** Needs a signed-in user: students post sublets, landlords post leases. */
+  async createListing(input: NewListing & Partial<Pick<ListingRecord, ServerOwned>>): Promise<Listing> {
+    const { id: _id, postedAt: _at, postedBy: _by, westernVerified: _wv, landlordId: _ll, ...body } = input;
+    const created = await request<unknown>('/listings', { method: 'POST', body, auth: true });
+    return withRating(ListingSchema.parse(created));
   },
 
   createReview(input: Omit<Review, 'id' | 'createdAt'>) {

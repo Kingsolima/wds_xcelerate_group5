@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute, Link, useNavigate, useRouterState } from '@tanstack/react-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BadgeCheck, Check } from 'lucide-react';
 import {
   AMENITIES,
@@ -14,7 +14,8 @@ import {
   type Listing,
   type RoommatePost,
 } from '@/data/data';
-import { api } from '@/data/api';
+import { ApiError, api, type Role } from '@/data/api';
+import { meQueryOptions } from '@/data/queries';
 import { photoUrl } from '@/data/photos';
 import {
   AREA_TIMES,
@@ -98,9 +99,17 @@ function PostPage() {
         {copy.intro}
       </PageHeader>
       <div className="wrap pt-10 pb-24">
-        {type === 'sublet' && <SubletForm key="sublet" />}
+        {type === 'sublet' && (
+          <SignedInAs key="sublet" roles={['student']} wrongRole="Only students with a verified @uwo.ca or @ivey.ca email can post sublets.">
+            <SubletForm />
+          </SignedInAs>
+        )}
         {type === 'roommate' && <RoommateForm key="roommate" />}
-        {type === 'listing' && <LandlordForm key="listing" />}
+        {type === 'listing' && (
+          <SignedInAs key="listing" roles={['landlord', 'admin']} wrongRole="Student accounts can post sublets, not leases. Landlords sign up with their own email.">
+            <LandlordForm />
+          </SignedInAs>
+        )}
       </div>
     </>
   );
@@ -138,7 +147,7 @@ function SubletForm() {
       preview={<ListingCard listing={previewListing({ ...v, kind: 'sublet', availableTo: v.availableTo })} />}
       onSubmit={form.handleSubmit((data) => create.mutate(subletToListing(data)))}
       pending={create.isPending}
-      failed={create.isError}
+      error={create.error}
       submitLabel="Post sublet"
     >
       <Group title="The place">
@@ -196,7 +205,7 @@ function LandlordForm() {
       preview={<ListingCard listing={previewListing({ ...v, kind: 'lease' })} />}
       onSubmit={form.handleSubmit((data) => create.mutate(landlordToListing(data)))}
       pending={create.isPending}
-      failed={create.isError}
+      error={create.error}
       submitLabel="Post listing"
     >
       <Group title="The property">
@@ -307,7 +316,7 @@ function RoommateForm() {
       preview={<RoommatePostCard post={preview} />}
       onSubmit={form.handleSubmit((data) => create.mutate(roommateToPost(data)))}
       pending={create.isPending}
-      failed={create.isError}
+      error={create.error}
       submitLabel="Post roommate ad"
     >
       <Group title="What kind of post">
@@ -374,6 +383,36 @@ function RoommateForm() {
 }
 
 /* ---------- Shared pieces ---------- */
+
+/** Shows the form only to a signed-in user with one of `roles`; the server enforces the same rule. */
+function SignedInAs({ roles, wrongRole, children }: { roles: Role[]; wrongRole: string; children: ReactNode }) {
+  const href = useRouterState({ select: (s) => s.location.href });
+  const { data: me, isPending, error } = useQuery(meQueryOptions());
+
+  if (isPending) return <p className="font-text text-ink-soft">Checking your account…</p>;
+  if (error) {
+    return (
+      <p role="alert" className="max-w-xl rounded-xl bg-danger-wash px-4 py-3 font-text text-danger">
+        {error.message}
+      </p>
+    );
+  }
+  if (!me) {
+    return (
+      <div className="max-w-xl rounded-2xl bg-lavender p-6 text-lavender-ink">
+        <h2 className="text-xl text-ink">Sign in to post</h2>
+        <p className="mt-2 font-text">Anyone can browse. Posting needs an account so people know who they’re talking to.</p>
+        <Link to="/sign-in" search={{ redirect: href }} className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-purple px-5 text-white">
+          Sign in or create an account
+        </Link>
+      </div>
+    );
+  }
+  if (!roles.includes(me.role)) {
+    return <p className="max-w-xl rounded-2xl bg-butter p-6 font-text text-butter-ink">{wrongRole}</p>;
+  }
+  return children;
+}
 
 function useCreateListing() {
   const queryClient = useQueryClient();
@@ -502,23 +541,24 @@ function Layout({
   preview,
   onSubmit,
   pending,
-  failed,
+  error,
   submitLabel,
 }: {
   children: ReactNode;
   preview: ReactNode;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   pending: boolean;
-  failed: boolean;
+  error: Error | null;
   submitLabel: string;
 }) {
   return (
     <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-16">
       <form onSubmit={onSubmit} noValidate className="min-w-0">
         {children}
-        {failed && (
+        {error && (
           <p role="alert" className="mb-4 rounded-xl bg-danger-wash px-4 py-3 font-text text-sm text-danger">
-            That didn’t post. Check your connection and try again; nothing you typed was lost.
+            That didn’t post. {error instanceof ApiError ? error.message : 'Check your connection and try again.'}{' '}
+            Nothing you typed was lost.
           </p>
         )}
         <div className="flex flex-wrap items-center gap-3 border-t border-line pt-8">

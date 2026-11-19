@@ -545,7 +545,7 @@ export function createFurniture(m: Mats) {
     const { fronts = true, overhang = 0 } = options;
     const o = group();
     o.add(box(w, 0.1, d - 0.08, m.gap, 0, 0, -0.03));
-    o.add(box(w, 0.76, d - 0.02, m.inkMatte, 0, 0.1, -0.01));
+    o.add(box(w, 0.76, d - 0.02, m.cabinet, 0, 0.1, -0.01));
     o.add(box(w + 0.012, 0.04, d + 0.02 + overhang, m.stone, 0, 0.86, -overhang / 2));
     if (fronts) {
       const n = Math.max(1, Math.round(w / 0.48));
@@ -637,7 +637,7 @@ export function createFurniture(m: Mats) {
   function pantry(w: number, d: number) {
     const o = group();
     const h = WALL_H + 0.5;
-    o.add(box(w, h, d, m.inkMatte));
+    o.add(box(w, h, d, m.cabinet));
     o.add(box(0.006, h - 0.04, 0.006, m.gap, 0, 0.02, d / 2));
     for (const side of [-1, 1]) o.add(box(0.014, 0.5, 0.018, m.brass, side * 0.035, 0.75, d / 2 + 0.004));
     return o;

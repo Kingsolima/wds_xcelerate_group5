@@ -20,3 +20,7 @@ export const landlordQueryOptions = (landlordId: string) =>
 
 export const roommatePostsQueryOptions = () =>
   queryOptions({ queryKey: ['roommates'], queryFn: api.getRoommatePosts });
+
+/** The signed-in user, or null. Invalidate ['me'] after signing in or out. */
+export const meQueryOptions = () =>
+  queryOptions({ queryKey: ['me'], queryFn: api.getMe, staleTime: 5 * 60_000 });

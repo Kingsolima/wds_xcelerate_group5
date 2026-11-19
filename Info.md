@@ -79,11 +79,14 @@ Sign-up, sign-in (email + password or magic link), email verification and sign-o
 - Roles: a verified `@uwo.ca` or `@ivey.ca` email = `student`, any other email = `landlord`. `admin` is set by hand in the `profiles` table.
 - Backend usage: `router.post('/listings', auth, requireRole('landlord'), handler)` with `auth` and `requireRole` from `server/src/auth/index.ts`.
 
-**Frontend (for Jeffrey):**
-1. Install Neon's auth client (`@neon/neon-js` or `@neon/auth`, Neon's docs use both; check `npm view`) and create it with `createAuthClient(import.meta.env.VITE_NEON_AUTH_URL)`.
-2. Sign in with `authClient.signIn.magicLink({ email, callbackURL: '/' })` or email + password.
-3. Get the token with `(await authClient.getSession()).data?.session.token` (expires after 15 min, so fetch it per request).
-4. Send it as `Authorization: Bearer <token>` from `client/src/data/api.ts`, then call `GET /api/auth/me` to get the role.
+**Frontend:**
+- `client/src/lib/auth.ts` sets up `@neon/auth` from `VITE_NEON_AUTH_URL` in `client/.env` (see `client/.env.example`).
+- `/sign-in` signs in or creates an account with email + password. New accounts get a verification email, and the API rejects them until it's clicked.
+- `client/src/data/http.ts` calls `/api/...` and adds `Authorization: Bearer <JWT>` for signed-in routes. The JWT comes from Neon's `getJWTToken()`, not `getSession().session.token` (that one is a session id, not a JWT).
+- The nav and the post page read the role from `GET /api/auth/me`. Sublets need a student account and leases need a landlord account.
+- Listings come from the API, and the seed listings in `client/src/data/listings.ts` are shown after them. Reviews, landlords and roommate posts are still local mock data in `client/src/data/api.ts` until their endpoints exist.
+
+**Running it locally:** fill in `server/.env` and `client/.env`, run `npm run migrate -w server` once, then `npm run dev` from the repo root (Express on 3001, Vite on 5173, `/api` proxied).
 
 ### Listings
 
