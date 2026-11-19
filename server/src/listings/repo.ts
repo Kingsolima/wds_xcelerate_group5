@@ -10,6 +10,9 @@ export interface Listing extends Omit<ListingInput, 'availableTo'> {
   landlordId: string | null;
   postedBy: string;
   postedAt: string;
+  /** Average review rating, 0 when there are no reviews. */
+  rating: number;
+  reviewCount: number;
 }
 
 export interface ListingRow {
@@ -38,15 +41,22 @@ export interface ListingRow {
   posted_by: string;
   landlord_id: string | null;
   posted_at: Date;
+  rating: number;
+  review_count: number;
 }
 
-/** Dates are selected as text so they stay YYYY-MM-DD with no timezone shifts. */
+/**
+ * Dates are selected as text so they stay YYYY-MM-DD with no timezone shifts.
+ * Rating and review count are worked out from the reviews table on every read.
+ */
 const COLUMNS = `
   id, kind, type, name, description, price, lease, address, neighbourhood,
   beds, baths, rooms_open, walk_minutes, bus_minutes, grocery_minutes,
   available_from::text AS available_from, available_to::text AS available_to,
   furnished, utilities_included, amenities, photos, western_verified,
-  posted_by, landlord_id, posted_at`;
+  posted_by, landlord_id, posted_at,
+  (SELECT coalesce(avg(rv.rating), 0)::float8 FROM reviews rv WHERE rv.listing_id = listings.id) AS rating,
+  (SELECT count(*)::int FROM reviews rv WHERE rv.listing_id = listings.id) AS review_count`;
 
 export function toListing(row: ListingRow): Listing {
   const listing: Listing = {
@@ -72,6 +82,8 @@ export function toListing(row: ListingRow): Listing {
     landlordId: row.landlord_id,
     postedBy: row.posted_by,
     postedAt: row.posted_at.toISOString(),
+    rating: row.rating,
+    reviewCount: row.review_count,
   };
   if (row.available_to) listing.availableTo = row.available_to;
   return listing;

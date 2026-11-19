@@ -6,8 +6,6 @@ Housing app for Western (UWO) students: listings, reviews, sublets and roommate 
 
 - See comments and ratings on residences and landlords.
 - Find sublets, and post sublet listings when away on internship or for the summer.
-- Scroll through listings and find other interested roommates.
-  - Match with them.
 - See the features of each listing.
   - Examples: close to campus, Western verified, near a Superstore.
 
@@ -26,7 +24,7 @@ TypeScript across the whole stack.
 
 | Person  | Area                               |
 | ------- | ---------------------------------- |
-| Omar    | Auth, Sublets                      |
+| Omar    | Auth, Sublets, Reviews             |
 | Sam     | Landlord posting, UWO verification |
 | Lavanya | UX / design                        |
 | Tanya   | Join a group / party               |
@@ -48,12 +46,6 @@ As a landlord, I want to post a listing for students, so that students can find 
 
 **Student leaving a review**
 As a student who has lived somewhere, I want to rate and review the listing and landlord, so that other students can make a better choice.
-
-**Student finding roommates**
-As a student without a full group, I want to see who else is interested in a listing, so that I can find roommates to rent it with.
-
-**Student matching with roommates**
-As a student, I want to match with another student who liked the same listing, so that we can message and plan to rent together.
 
 **Student joining a group**
 As a student, I want to create or join a group for a listing, so that my roommates and I can apply together.
@@ -84,7 +76,7 @@ Sign-up, sign-in (email + password or magic link), email verification and sign-o
 - `/sign-in` signs in or creates an account with email + password. New accounts get a verification email, and the API rejects them until it's clicked.
 - `client/src/data/http.ts` calls `/api/...` and adds `Authorization: Bearer <JWT>` for signed-in routes. The JWT comes from Neon's `getJWTToken()`, not `getSession().session.token` (that one is a session id, not a JWT).
 - The nav and the post page read the role from `GET /api/auth/me`. Sublets need a student account and leases need a landlord account.
-- Listings come from the API, and the seed listings in `client/src/data/listings.ts` are shown after them. Reviews and landlords are still local mock data in `client/src/data/api.ts` until their endpoints exist.
+- Listings come from the API, and the seed listings in `client/src/data/listings.ts` are shown after them. Reviews of API listings are loaded from and saved to the reviews API below: posting needs a signed-in student, and the author (or an admin) gets a Delete button. The seed listings aren't in the database, so their reviews stay in the browser. Landlords are mock data until their endpoints exist.
 
 **Running it locally:** fill in `server/.env` and `client/.env`, run `npm run migrate -w server` once, then `npm run dev` from the repo root (Express on 3001, Vite on 5173, `/api` proxied).
 
@@ -104,25 +96,22 @@ Leases and sublets share one `listings` table and these routes. A sublet is a li
 - Sublets need `availableTo` after `availableFrom`. Leases have no end date.
 - `westernVerified` is always false when posted. Only the Western scrape sets it (Sam).
 - `landlordId` is the poster for leases and null for sublets. Sam: add the foreign key once the landlords table exists.
-- Ratings (`rating`, `reviewCount`) will be added with the reviews endpoints.
+- Every listing response includes `rating` (average, 0 if no reviews) and `reviewCount`, worked out from its reviews.
 
 ### Reviews
 
+Reviews are per listing for now (landlord reviews come once the landlords table exists). The shapes match `Review` in `client/src/data/data.ts` and `RatingSummary` in `client/src/data/api.ts`; each review also has `authorId` so the UI can show a delete button to its author.
+
 | Method | Route                   | Purpose                               |
 | ------ | ----------------------- | ------------------------------------- |
-| GET    | `/listings/:id/reviews` | Get reviews and ratings for a listing |
-| POST   | `/listings/:id/reviews` | Signed in: Post a review and rating           |
-| DELETE | `/reviews/:id`          | Signed in: Author deletes their review        |
+| GET    | `/listings/:id/reviews` | Returns `{ summary, reviews }`, newest first |
+| POST   | `/listings/:id/reviews` | Signed in: Students only. Body: `authorDetail`, `livedThere`, `rating`, `scores` (`landlord`, `condition`, `value`, `quiet`, each 1–5), `title`, `body` |
+| DELETE | `/reviews/:id`          | Signed in: Author or admin            |
 
-### Roommates & Matching
-
-| Method | Route                      | Purpose                             |
-| ------ | -------------------------- | ----------------------------------- |
-| POST   | `/listings/:id/interest`   | Signed in: Mark interest in a listing       |
-| DELETE | `/listings/:id/interest`   | Signed in: Remove interest                  |
-| GET    | `/listings/:id/interested` | Signed in: See other students interested    |
-| POST   | `/matches`                 | Signed in: Like a student (match if mutual) |
-| GET    | `/matches`                 | Signed in: Get my matches                   |
+- One review per student per listing: a second one returns 409 `already_reviewed`.
+- Landlords and admins can't post reviews, and a student can't review their own sublet (403).
+- `author.name` comes from the reviewer's Neon Auth account; `author.detail` (e.g. "3rd-year Kinesiology") is typed in.
+- Deleting a listing deletes its reviews.
 
 ### Groups
 

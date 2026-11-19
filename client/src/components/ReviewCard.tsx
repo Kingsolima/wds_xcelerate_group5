@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Trash2 } from 'lucide-react';
 import type { Review } from '@/data/data';
+import { api } from '@/data/api';
+import { meQueryOptions } from '@/data/queries';
 import { cn } from '@/lib/cn';
 import { Avatar } from './Avatar';
 import { Stars } from './Rating';
@@ -19,6 +23,22 @@ export function ReviewCard({
 }) {
   const [open, setOpen] = useState(false);
   const long = review.body.length > 220;
+
+  // Reviews from the API carry authorId: their author (or an admin) can delete them.
+  const queryClient = useQueryClient();
+  const { data: me } = useQuery({ ...meQueryOptions(), enabled: Boolean(review.authorId) });
+  const canDelete = Boolean(
+    review.authorId && me && (me.id === review.authorId || me.role === 'admin'),
+  );
+  const remove = useMutation({
+    mutationFn: () => api.deleteReview(review.id),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['reviews'] }),
+        queryClient.invalidateQueries({ queryKey: ['listings'] }),
+        queryClient.invalidateQueries({ queryKey: ['landlords'] }),
+      ]),
+  });
 
   return (
     <article className={cn('flex flex-col rounded-2xl bg-white p-5 shadow-card md:p-6', className)}>
@@ -52,7 +72,24 @@ export function ReviewCard({
           <span className="block truncate text-ink">{review.author.name}</span>
           <span className="block truncate text-ink-faint">{review.author.detail}</span>
         </p>
+        {canDelete && (
+          <button
+            type="button"
+            disabled={remove.isPending}
+            onClick={() => {
+              if (window.confirm('Delete this review? This can’t be undone.')) remove.mutate();
+            }}
+            className="ml-auto inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2 text-sm text-ink-soft hover:bg-wash hover:text-danger disabled:opacity-50"
+          >
+            <Trash2 size={15} aria-hidden="true" /> {remove.isPending ? 'Deleting…' : 'Delete'}
+          </button>
+        )}
       </div>
+      {remove.error && (
+        <p role="alert" className="mt-2 font-text text-[0.8125rem] text-danger">
+          {remove.error.message}
+        </p>
+      )}
       {listingName && (
         <Link
           to="/listings/$listingId"

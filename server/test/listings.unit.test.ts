@@ -118,11 +118,15 @@ describe('row mapping', () => {
       posted_by: 'user-1',
       landlord_id: null,
       posted_at: new Date('2026-11-17T12:00:00Z'),
+      rating: 4.5,
+      review_count: 2,
     };
     const listing = toListing(row);
     assert.deepEqual(listing.housingDetails, { beds: 4, baths: 1.5, roomsOpen: 1 });
     assert.equal(listing.availableTo, '2027-08-31');
     assert.equal(listing.postedAt, '2026-11-17T12:00:00.000Z');
+    assert.equal(listing.rating, 4.5);
+    assert.equal(listing.reviewCount, 2);
     assert.equal(toListing({ ...row, available_to: null }).availableTo, undefined);
   });
 
