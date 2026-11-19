@@ -198,6 +198,10 @@ export const RoommatePostSchema = z.object({
   /** Set when the post is about a specific listing. */
   listingId: z.string().optional(),
   postedAt: z.string(),
+  /** Posts from the API only (/api/groups): user ids of members on the app, creator first. */
+  memberIds: z.string().array().optional(),
+  /** Posts from the API only: the user who started the group. */
+  createdBy: z.string().optional(),
 });
 export type RoommatePost = z.infer<typeof RoommatePostSchema>;
 

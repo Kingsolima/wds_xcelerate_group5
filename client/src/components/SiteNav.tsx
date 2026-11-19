@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { Heart, Menu, Plus, X } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Heart, LogOut, Menu, Plus, X } from 'lucide-react';
+import { meQueryOptions } from '@/data/queries';
+import { authClient } from '@/lib/auth';
 import { cn } from '@/lib/cn';
 import { useSaved } from '@/lib/store';
 import { buttonStyles } from './Button';
@@ -66,6 +69,8 @@ export function SiteNav() {
         </ul>
 
         <div className="ml-auto flex items-center gap-2">
+          <Account onDark={onHome} />
+
           <Link
             to="/saved"
             aria-label={`Saved, ${saved.ids.length} ${saved.ids.length === 1 ? 'listing' : 'listings'}`}
@@ -145,11 +150,65 @@ export function SiteNav() {
               </li>
             ))}
           </ul>
-          <Link to="/post" className={buttonStyles({ color: 'white', size: 'lg', className: 'mt-auto w-full' })}>
+          <div className="mt-auto mb-3">
+            <Account onDark menu />
+          </div>
+          <Link to="/post" className={buttonStyles({ color: 'white', size: 'lg', className: 'w-full' })}>
             <Plus size={18} /> Post a listing
           </Link>
         </div>
       </dialog>
     </header>
+  );
+}
+
+/** "Sign in" when signed out; the user's name and a sign-out button when signed in. */
+function Account({ onDark, menu = false }: { onDark: boolean; menu?: boolean }) {
+  const queryClient = useQueryClient();
+  const href = useRouterState({ select: (s) => s.location.href });
+  const { data: me, isPending } = useQuery(meQueryOptions());
+
+  if (isPending) return null;
+
+  if (!me) {
+    return (
+      <Link
+        to="/sign-in"
+        search={{ redirect: href.startsWith('/sign-in') ? undefined : href }}
+        className={cn(
+          menu
+            ? 'flex min-h-11 items-center text-lg underline'
+            : 'hidden min-h-11 items-center rounded-lg px-3 text-[0.9375rem] sm:inline-flex',
+          !menu && (onDark ? 'text-white/80 hover:text-white' : 'text-ink-soft hover:text-ink'),
+        )}
+      >
+        Sign in
+      </Link>
+    );
+  }
+
+  async function signOut() {
+    await authClient().signOut();
+    queryClient.setQueryData(meQueryOptions().queryKey, null);
+  }
+
+  return (
+    <div className={cn('items-center gap-1', menu ? 'flex justify-between' : 'hidden sm:flex')}>
+      <span className={cn('max-w-40 truncate text-[0.9375rem]', onDark ? 'text-white/80' : 'text-ink-soft')} title={me.email}>
+        {me.name || me.email}
+      </span>
+      <button
+        type="button"
+        onClick={signOut}
+        aria-label="Sign out"
+        title="Sign out"
+        className={cn(
+          'grid size-11 place-items-center rounded-full transition-colors duration-150',
+          onDark ? 'hover:bg-white/10' : 'hover:bg-wash',
+        )}
+      >
+        <LogOut size={18} />
+      </button>
+    </div>
   );
 }

@@ -17,7 +17,7 @@ import {
   Sofa,
 } from 'lucide-react';
 import { AMENITY_LABELS, TYPE_LABELS } from '@/data/data';
-import { NotFoundError, ratingFor } from '@/data/api';
+import { NotFoundError, isServerId, ratingFor } from '@/data/api';
 import {
   landlordsQueryOptions,
   listingQueryOptions,
@@ -148,7 +148,7 @@ function ListingPage() {
               </Fact>
             </ul>
             <p className="mt-5 max-w-[65ch] font-text leading-relaxed text-ink-soft">{listing.description}</p>
-            {sublet && listing.postedBy && (
+            {sublet && listing.postedBy && !isServerId(listing.postedBy) && (
               <p className="mt-4 font-text text-sm text-ink-soft">Posted by {listing.postedBy}, who is subletting their own room.</p>
             )}
           </Section>

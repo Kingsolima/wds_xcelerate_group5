@@ -370,16 +370,18 @@ export function createMaterials() {
     oak: std('#d6b384', 0.7),
     walnut: std('#8d684a', 0.65),
     white: std('#faf7f1', 0.6),
-    inkMatte: std(BRAND.ink.clone().lerp(BRAND.purple, 0.25), 0.8),
+    inkMatte: std('#34363a', 0.8),
+    // Kitchen joinery: a muted sage that sits with the stone top, brass pulls and oak floor.
+    cabinet: std('#8f9c8a', 0.7),
     stone: std('#eee9df', 0.32),
     ceramic: std('#fdfcf9', 0.22),
     steel: std('#c9ccd0', 0.36, 0.9),
     steelDark: std('#8b8f96', 0.4, 0.85),
     chrome: std('#e6e8ea', 0.16, 1),
     brass: std('#c9a35b', 0.34, 0.9),
-    black: std('#27232e', 0.55, 0.3),
-    blackGlass: std('#17141c', 0.14, 0.35),
-    gap: std('#3a3342', 0.9),
+    black: std('#26272a', 0.55, 0.3),
+    blackGlass: std('#151618', 0.14, 0.35),
+    gap: std('#3a3b3e', 0.9),
     mirror: std('#eef2f2', 0.04, 1),
 
     // Textiles

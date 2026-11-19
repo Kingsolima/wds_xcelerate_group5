@@ -21,6 +21,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Fail instead of moving to 5174: CORS (CLIENT_URL) and Neon Auth only allow 5173.
+    strictPort: true,
     proxy: {
       '/api': 'http://localhost:3001',
     },
