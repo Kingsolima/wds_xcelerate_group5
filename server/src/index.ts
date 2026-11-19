@@ -1,4 +1,5 @@
 import express from 'express';
+import { groupsRouter } from './routes/groups.ts';
 import cors from 'cors';
 import { pool } from './db.ts';
 import { auth } from './auth/index.ts';
@@ -24,6 +25,7 @@ app.get('/api/health', async (_req, res) => {
 app.use('/api/auth', authRouter(auth));
 app.use('/api/listings', listingsRouter({ pool, auth }));
 app.use('/api/me', meRouter({ pool, auth }));
+app.use('/api/groups', groupsRouter({ pool, auth }));
 
 app.use(errorHandler);
 
